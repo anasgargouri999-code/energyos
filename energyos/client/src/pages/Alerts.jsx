@@ -19,10 +19,24 @@ export default function Alerts() {
     }
   }, [mode, alerts.length, setAlerts]);
 
-  const handleAcknowledge = (id) => {
+  const handleAcknowledge = async (id) => {
     const updated = alerts.map(a => a.id === id ? { ...a, acknowledged: true } : a);
     setAlerts(updated);
     toast.success("Alerte acquittée");
+
+    try {
+      const gtbUrl = localStorage.getItem('energyos_gtb_url');
+      if (gtbUrl) {
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+        await fetch(`${baseUrl}/api/gtb/alerts/${id}/acknowledge`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: gtbUrl })
+        });
+      }
+    } catch (err) {
+      console.error("Failed to acknowledge alert in GTB simulation:", err);
+    }
   };
 
   const getIcon = (severity) => {

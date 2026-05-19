@@ -95,11 +95,95 @@ export default function Dashboard() {
     }
   };
 
+  const mapConfigToSchedules = (ecoSchedules) => {
+    if (!ecoSchedules || !Array.isArray(ecoSchedules)) return [];
+    const list = [];
+    ecoSchedules.forEach((sch, idx) => {
+      list.push({
+        id: `gtb-eco-${idx}-off`,
+        target: sch.zone,
+        type: 'zone',
+        action: 'off',
+        time: sch.eco_start || '18:00',
+        days: sch.days || ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven'],
+        active: true
+      });
+      list.push({
+        id: `gtb-eco-${idx}-on`,
+        target: sch.zone,
+        type: 'zone',
+        action: 'on',
+        time: sch.eco_end || '07:00',
+        days: sch.days || ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven'],
+        active: true
+      });
+    });
+    return list;
+  };
+
+  const syncSchedulesToGTB = async (currentSchedules) => {
+    const gtbUrl = localStorage.getItem('energyos_gtb_url');
+    if (!gtbUrl) return;
+
+    try {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      
+      const zonesGrouped = {};
+      currentSchedules.forEach((sch) => {
+        if (sch.type !== 'zone') return;
+        if (!zonesGrouped[sch.target]) {
+          zonesGrouped[sch.target] = {
+            zone: sch.target,
+            eco_start: '18:00',
+            eco_end: '07:00',
+            days: sch.days || ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven']
+          };
+        }
+        if (sch.action === 'off') {
+          zonesGrouped[sch.target].eco_start = sch.time;
+        } else if (sch.action === 'on') {
+          zonesGrouped[sch.target].eco_end = sch.time;
+        }
+      });
+
+      const ecoSchedules = Object.values(zonesGrouped);
+
+      await fetch(`${baseUrl}/api/gtb/config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: gtbUrl,
+          config: {
+            eco_schedules: ecoSchedules
+          }
+        })
+      });
+    } catch (err) {
+      console.error('Failed to sync schedules to GTB:', err);
+    }
+  };
+
+  const handleToggleSchedule = (id) => {
+    toggleSchedule(id);
+    setTimeout(() => {
+      const updated = useStore.getState().schedules;
+      syncSchedulesToGTB(updated);
+    }, 50);
+  };
+
+  const handleDeleteSchedule = (id) => {
+    deleteSchedule(id);
+    setTimeout(() => {
+      const updated = useStore.getState().schedules;
+      syncSchedulesToGTB(updated);
+    }, 50);
+  };
+
   const handleAddScheduleSubmit = (e) => {
     e.preventDefault();
     if (!targetName) return;
 
-    addSchedule({
+    const newSch = {
       id: 'sch_' + Date.now(),
       target: targetName,
       type: targetType,
@@ -107,7 +191,13 @@ export default function Dashboard() {
       time: cycleTime,
       days: selectedDays,
       active: true,
-    });
+    };
+
+    addSchedule(newSch);
+    
+    // Sync to GTB simulator
+    const updatedSchedules = [...schedules, newSch];
+    syncSchedulesToGTB(updatedSchedules);
 
     toast.success(`Planification enregistrée pour ${targetName} !`);
     setShowAddModal(false);
@@ -135,6 +225,57 @@ export default function Dashboard() {
     let active = true;
 
     async function loadData() {
+      // 1. Check for real GTB connection first!
+      const gtbUrl = localStorage.getItem('energyos_gtb_url');
+      if (gtbUrl) {
+        try {
+          const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+          
+          // Fetch zones
+          const zRes = await fetch(`${baseUrl}/api/gtb/zones?url=${encodeURIComponent(gtbUrl)}`);
+          if (zRes.ok) {
+            const zData = await zRes.json();
+            if (active && zData && zData.length > 0) {
+              setZones(zData);
+            }
+          }
+          
+          // Fetch live
+          const eRes = await fetch(`${baseUrl}/api/gtb/live?url=${encodeURIComponent(gtbUrl)}`);
+          if (eRes.ok) {
+            const eData = await eRes.json();
+            if (active && eData) {
+              updateLiveData(eData);
+            }
+          }
+          
+          // Fetch alerts
+          const aRes = await fetch(`${baseUrl}/api/gtb/alerts?url=${encodeURIComponent(gtbUrl)}`);
+          if (aRes.ok) {
+            const aData = await aRes.json();
+            if (active && aData) {
+              setAlerts(aData);
+            }
+          }
+
+          // Fetch config (schedules)
+          const cRes = await fetch(`${baseUrl}/api/gtb/config?url=${encodeURIComponent(gtbUrl)}`);
+          if (cRes.ok) {
+            const cData = await cRes.json();
+            if (active && cData && cData.eco_schedules) {
+              const mapped = mapConfigToSchedules(cData.eco_schedules);
+              if (mapped.length > 0) {
+                useStore.setState({ schedules: mapped });
+              }
+            }
+          }
+          return;
+        } catch (err) {
+          console.error("Failed to load data from GTB simulation:", err);
+        }
+      }
+
+      // 2. Database configuration fallback
       if (isDbConfigured()) {
         const { data, error } = await fetchZonesWithDevices();
         if (active) {
@@ -155,6 +296,7 @@ export default function Dashboard() {
         }
       }
 
+      // 3. Demo fallback
       if (active) {
         if (zones.length === 0) setZones(DEMO_ZONES);
         if (alerts.length === 0) setAlerts(DEMO_ALERTS);
@@ -171,6 +313,47 @@ export default function Dashboard() {
   useEffect(() => {
     if (zones.length > 0) {
       const interval = setInterval(() => {
+        // If a real local GTB is connected, we should poll the real simulation instead of simulating in-memory!
+        const gtbUrl = localStorage.getItem('energyos_gtb_url');
+        if (gtbUrl) {
+          const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+          
+          // Poll zones
+          fetch(`${baseUrl}/api/gtb/zones?url=${encodeURIComponent(gtbUrl)}`)
+            .then(res => {
+              if (res.ok) return res.json();
+              throw new Error("HTTP " + res.status);
+            })
+            .then(data => {
+              if (data && data.length > 0) setZones(data);
+            })
+            .catch(err => console.error("Error polling zones:", err));
+            
+          // Poll live energy metrics
+          fetch(`${baseUrl}/api/gtb/live?url=${encodeURIComponent(gtbUrl)}`)
+            .then(res => {
+              if (res.ok) return res.json();
+              throw new Error("HTTP " + res.status);
+            })
+            .then(data => {
+              if (data) updateLiveData(data);
+            })
+            .catch(err => console.error("Error polling live data:", err));
+            
+          // Poll alerts
+          fetch(`${baseUrl}/api/gtb/alerts?url=${encodeURIComponent(gtbUrl)}`)
+            .then(res => {
+              if (res.ok) return res.json();
+              throw new Error("HTTP " + res.status);
+            })
+            .then(data => {
+              if (data) setAlerts(data);
+            })
+            .catch(err => console.error("Error polling alerts:", err));
+            
+          return;
+        }
+
         // 1. Calculate active zone load sum with dynamic load capping!
         const currentZoneLoadSum = zones.reduce((sum, zone) => {
           const capFactor = zone.load_cap !== undefined ? zone.load_cap / 100 : 1;
@@ -503,7 +686,7 @@ export default function Dashboard() {
                           {/* Toggle switch */}
                           <div className="flex items-center gap-3">
                             <button
-                              onClick={() => toggleSchedule(sch.id)}
+                              onClick={() => handleToggleSchedule(sch.id)}
                               className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
                                 sch.active ? 'bg-accent-green' : 'bg-white/10'
                               }`}
@@ -535,7 +718,7 @@ export default function Dashboard() {
                             </span>
                             <button
                               onClick={() => {
-                                deleteSchedule(sch.id);
+                                handleDeleteSchedule(sch.id);
                                 toast.success('Planification supprimée !');
                               }}
                               className="text-text-muted hover:text-accent-red transition-colors p-1.5 hover:bg-white/5 rounded-lg cursor-pointer"
