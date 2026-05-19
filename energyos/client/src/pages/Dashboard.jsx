@@ -6,9 +6,10 @@ import ZoneCard from '../components/dashboard/ZoneCard';
 import Skeleton from '../components/ui/Skeleton';
 import SimulationControls from '../components/dashboard/SimulationControls';
 import { useStore } from '../store';
-import { DEMO_ZONES, DEMO_LIVE, DEMO_ALERTS } from '../lib/demoData';
+import { DEMO_ZONES, DEMO_LIVE, DEMO_ALERTS, DEMO_DEVICES, MONTHLY_DATA } from '../lib/demoData';
+import { autoConfigFromDevices, generateClinicalReport } from '../lib/groq';
 import { isDbConfigured, fetchZonesWithDevices } from '../lib/db';
-import { Zap, Activity, Battery, AlertTriangle, Cpu, X, Calendar, Clock, Plus, Trash2, Power } from 'lucide-react';
+import { Zap, Activity, Battery, AlertTriangle, Cpu, X, Calendar, Clock, Plus, Trash2, Power, Brain, Sparkles, FileText, Loader2, CheckCircle2, TrendingUp } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function Dashboard() {
@@ -33,6 +34,12 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('realtime'); // 'realtime' | 'schedule'
   
+  // AI report states
+  const [showReport, setShowReport] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportData, setReportData] = useState(null);
+  const [autoConfigLoading, setAutoConfigLoading] = useState(false);
+
   // Schedule creation form states
   const [showAddModal, setShowAddModal] = useState(false);
   const [targetType, setTargetType] = useState('device');
@@ -40,6 +47,53 @@ export default function Dashboard() {
   const [cycleAction, setCycleAction] = useState('on');
   const [cycleTime, setCycleTime] = useState('08:00');
   const [selectedDays, setSelectedDays] = useState(['Lun', 'Mar', 'Mer', 'Jeu', 'Ven']);
+
+  const handleAutoConfig = async () => {
+    setAutoConfigLoading(true);
+    try {
+      const config = await autoConfigFromDevices(DEMO_DEVICES, MONTHLY_DATA.baseline);
+      useStore.getState().setGroqConfig(config);
+      localStorage.setItem('energyos_ai_config', JSON.stringify(config));
+
+      if (config && config.eco_schedules) {
+        const updated = zones.map((z) => {
+          const isEcoMatch = config.eco_schedules.some((s) =>
+            s.zone.toLowerCase().includes(z.name.toLowerCase()) ||
+            z.name.toLowerCase().includes(s.zone.toLowerCase())
+          );
+          if (isEcoMatch) {
+            return { ...z, mode: 'eco' };
+          }
+          return z;
+        });
+        setZones(updated);
+      }
+
+      toast.success('Optimisation Auto-IA appliquée à la clinique !');
+    } catch (err) {
+      console.error(err);
+      toast.error('Échec de la configuration IA.');
+    } finally {
+      setAutoConfigLoading(false);
+    }
+  };
+
+  const handleGenerateReport = async () => {
+    setReportLoading(true);
+    setShowReport(true);
+    setReportData(null);
+    try {
+      const data = await generateClinicalReport(zones, liveData, alerts);
+      setReportData(data);
+      toast.success('Rapport Énergétique Clinique IA généré !');
+    } catch (err) {
+      console.error(err);
+      toast.error('Échec de la génération du rapport IA.');
+      setShowReport(false);
+    } finally {
+      setReportLoading(false);
+    }
+  };
 
   const handleAddScheduleSubmit = (e) => {
     e.preventDefault();
@@ -117,12 +171,13 @@ export default function Dashboard() {
   useEffect(() => {
     if (zones.length > 0) {
       const interval = setInterval(() => {
-        // 1. Calculate active zone load sum
+        // 1. Calculate active zone load sum with dynamic load capping!
         const currentZoneLoadSum = zones.reduce((sum, zone) => {
+          const capFactor = zone.load_cap !== undefined ? zone.load_cap / 100 : 1;
           const currentLoad = zone.mode === 'eco'
             ? zone.load_kw * 0.6
             : (zone.mode === 'off' ? 0.4 : zone.load_kw);
-          return sum + currentLoad;
+          return sum + (currentLoad * capFactor);
         }, 0);
 
         // 2. Check for regular 30s peak spike (lasts 5 seconds)
@@ -137,9 +192,16 @@ export default function Dashboard() {
           // Normal hours oscillation: scale zone sum + base load to swing in 80-95 kW
           const jitter = Math.sin(Date.now() / 4000) * 3 + Math.random() * 2;
           simulatedPower = currentZoneLoadSum + 12 + jitter;
-          // Clamp normal power to 80-95 kW under standard conditions
-          if (simulatedPower < 80) simulatedPower = 80 + Math.random() * 2;
-          if (simulatedPower > 95) simulatedPower = 93 + Math.random() * 2;
+          
+          // Dynamically scale clamp levels based on currentZoneLoadSum relative to base normal sum (~73.3)
+          const baseNormalSum = 73.3;
+          const scaleRatio = currentZoneLoadSum / baseNormalSum;
+          
+          const minClamp = Math.max(25, 80 * scaleRatio);
+          const maxClamp = Math.max(40, 95 * scaleRatio);
+          
+          if (simulatedPower < minClamp) simulatedPower = minClamp + Math.random() * 2;
+          if (simulatedPower > maxClamp) simulatedPower = (maxClamp - 2) + Math.random() * 2;
         }
 
         // 4. cos phi fluctuations between 0.84 and 0.91
@@ -316,6 +378,62 @@ export default function Dashboard() {
 
               {activeTab === 'realtime' ? (
                 <>
+                  {/* AI Optimization Card */}
+                  <div className="relative overflow-hidden bg-bg-surface border border-white/5 rounded-2xl p-6 mb-6">
+                    {/* Glowing effect background */}
+                    <div className="absolute -top-12 -right-12 w-32 h-32 bg-accent-cyan/10 rounded-full blur-2xl pointer-events-none" />
+                    <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-accent-green/10 rounded-full blur-2xl animate-pulse pointer-events-none" />
+
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 relative z-10">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-accent-cyan/10 text-accent-cyan shrink-0">
+                            <Brain className="w-5 h-5 animate-pulse" />
+                          </span>
+                          <h3 className="font-display font-bold text-base text-text-primary">
+                            Centre d'Optimisation & Diagnostic IA
+                          </h3>
+                          <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-accent-cyan/5 text-accent-cyan border border-accent-cyan/10">
+                            Llama 3.1
+                          </span>
+                        </div>
+                        <p className="text-xs text-text-muted max-w-2xl mt-1 leading-relaxed">
+                          Exploitez l'intelligence artificielle pour analyser en temps réel les équipements de la Polyclinique Errachid, générer un plan de réduction d'énergie optimisé et réaliser un audit de conformité énergétique complet.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2.5 shrink-0">
+                        {/* 1. Auto Config Button */}
+                        <button
+                          onClick={handleAutoConfig}
+                          disabled={autoConfigLoading}
+                          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent-cyan/10 hover:bg-accent-cyan/20 text-accent-cyan border border-accent-cyan/20 hover:border-accent-cyan/40 transition font-semibold text-xs font-display cursor-pointer disabled:opacity-50"
+                        >
+                          {autoConfigLoading ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-3.5 h-3.5" />
+                          )}
+                          Optimisation Globale IA
+                        </button>
+
+                        {/* 2. AI Audit Report */}
+                        <button
+                          onClick={handleGenerateReport}
+                          disabled={reportLoading}
+                          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent-green/10 hover:bg-accent-green/20 text-accent-green border border-accent-green/20 hover:border-accent-green/40 transition font-semibold text-xs font-display cursor-pointer disabled:opacity-50"
+                        >
+                          {reportLoading ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <FileText className="w-3.5 h-3.5" />
+                          )}
+                          Audit Énergétique IA
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
                   <h2 className="text-xl text-text-primary font-display font-semibold mb-4">
                     Zones Monitorées
                   </h2>
@@ -595,6 +713,144 @@ export default function Dashboard() {
           )}
         </main>
       </div>
+      {/* Premium Glassmorphic AI Report Modal */}
+      {showReport && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-bg-surface/90 border border-white/10 w-full max-w-2xl rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden backdrop-blur-xl max-h-[90vh] flex flex-col animate-in scale-in duration-300">
+            {/* Cyberpunk accent lines */}
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-accent-cyan via-accent-green to-accent-amber" />
+            <div className="absolute -top-24 -left-24 w-48 h-48 bg-accent-cyan/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-accent-green/10 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-6 relative z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-accent-cyan/10 flex items-center justify-center text-accent-cyan">
+                  <Brain className="w-6 h-6 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="font-display font-bold text-xl text-text-primary flex items-center gap-2">
+                    Rapport Clinique Énergétique IA
+                    <Sparkles className="w-4 h-4 text-accent-cyan" />
+                  </h3>
+                  <p className="text-xs text-text-muted font-mono mt-0.5 uppercase tracking-widest">
+                    Polyclinique Errachid • Sfax, Tunisie
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowReport(false)}
+                className="text-text-muted hover:text-text-primary hover:bg-white/5 p-2 rounded-xl transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto space-y-6 pr-2 scrollbar-thin relative z-10">
+              {reportLoading ? (
+                <div className="flex flex-col items-center justify-center py-20 gap-4">
+                  <div className="relative flex items-center justify-center">
+                    <Loader2 className="w-12 h-12 text-accent-cyan animate-spin" />
+                    <Brain className="w-6 h-6 text-accent-cyan absolute animate-pulse" />
+                  </div>
+                  <div className="text-center">
+                    <p className="font-semibold text-text-primary animate-pulse">
+                      EnergyOS AI examine le réseau...
+                    </p>
+                    <p className="text-xs text-text-muted mt-1 max-w-sm">
+                      Analyse instantanée des zones, des puissances actives et du cos φ via l'intelligence Llama 3.1
+                    </p>
+                  </div>
+                </div>
+              ) : reportData ? (
+                <div className="space-y-6 text-left">
+                  {/* Bilan Global Card */}
+                  <div className="bg-bg-elevated/50 border border-white/5 rounded-2xl p-5 relative overflow-hidden">
+                    <div className="absolute top-4 right-4 text-xs font-mono text-accent-green bg-accent-green/10 px-2 py-0.5 rounded border border-accent-green/20 uppercase tracking-widest">
+                      Optimisé
+                    </div>
+                    <h4 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-1.5 font-display">
+                      <FileText className="w-3.5 h-3.5 text-accent-cyan" />
+                      Synthèse Générale
+                    </h4>
+                    <p className="text-text-primary text-sm leading-relaxed font-body">
+                      {reportData.bilan_global}
+                    </p>
+                  </div>
+
+                  {/* Anomalies Detected */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5 font-display">
+                      <AlertTriangle className="w-3.5 h-3.5 text-accent-amber" />
+                      Analyse des Zones & Points Critiques
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {reportData.analyses_zones?.map((item, idx) => (
+                        <div key={idx} className="bg-white/5 border border-white/5 rounded-xl p-4 flex gap-3">
+                          <span className="w-5 h-5 rounded-full bg-accent-amber/10 border border-accent-amber/20 flex items-center justify-center text-accent-amber shrink-0 font-mono text-xs font-bold mt-0.5">
+                            {idx + 1}
+                          </span>
+                          <p className="text-xs text-text-muted leading-relaxed">
+                            {item}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Dynamic Recommendations */}
+                  <div className="bg-gradient-to-br from-bg-elevated to-bg-surface/50 border border-white/10 rounded-2xl p-5 space-y-3">
+                    <h4 className="text-xs font-bold text-accent-cyan uppercase tracking-wider flex items-center gap-1.5 font-display">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Recommandations Éco-Responsables
+                    </h4>
+                    <div className="space-y-2.5">
+                      {reportData.recommandations?.map((item, idx) => (
+                        <div key={idx} className="flex gap-3 items-start">
+                          <CheckCircle2 className="w-4 h-4 text-accent-green shrink-0 mt-0.5" />
+                          <p className="text-xs text-text-primary font-medium">
+                            {item}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* STEG Financial Impact */}
+                  {reportData.steg_impact && (
+                    <div className="bg-accent-amber/5 border border-accent-amber/20 rounded-2xl p-4 flex gap-3 items-center">
+                      <TrendingUp className="w-6 h-6 text-accent-amber shrink-0" />
+                      <div className="text-left">
+                        <p className="text-xs font-bold text-accent-amber uppercase tracking-wider font-display">
+                          Impact STEG Tunisie & Pénalités
+                        </p>
+                        <p className="text-xs text-text-muted mt-0.5 leading-relaxed">
+                          {reportData.steg_impact}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-10">
+                  <p className="text-text-muted">Aucune donnée disponible.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-4 border-t border-white/10 mt-6 flex justify-end gap-3 relative z-10">
+              <button 
+                onClick={() => setShowReport(false)}
+                className="bg-accent-cyan text-bg-primary font-semibold px-6 py-2.5 rounded-xl hover:brightness-110 transition text-sm cursor-pointer shadow-lg shadow-accent-cyan/15 font-display"
+              >
+                Fermer le Rapport
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <SimulationControls />
     </div>
   );

@@ -30,4 +30,21 @@ router.get('/devices', async (req, res) => {
   }
 });
 
+// POST /control: proxy control commands to GTB or Node-RED
+router.post('/control', async (req, res) => {
+  try {
+    const { url, zoneId, parameter, value } = req.body;
+    console.log(`[GTB CONTROL] Command: Zone=${zoneId}, Param=${parameter}, Val=${value}`);
+
+    if (url) {
+      const response = await axios.post(`${url}/api/control`, { zoneId, parameter, value }, { timeout: 3000 });
+      return res.json({ status: 'ok', data: response.data });
+    }
+
+    res.json({ status: 'ok', mock: true, message: `Command ${parameter}=${value} simulated successfully` });
+  } catch (err) {
+    res.json({ status: 'mock_fallback', details: err.message });
+  }
+});
+
 module.exports = router;

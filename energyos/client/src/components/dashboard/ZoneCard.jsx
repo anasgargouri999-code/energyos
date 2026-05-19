@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
 import Card from '../ui/Card';
 import Badge from '../ui/Badge';
-import { Thermometer, Droplets, Zap, Cpu, ChevronDown, ChevronUp } from 'lucide-react';
+import { useStore } from '../../store';
+import { Thermometer, Droplets, Zap, Cpu, ChevronDown, ChevronUp, Sliders, Sun, Loader2 } from 'lucide-react';
 
 export default function ZoneCard({ zone, onModeChange }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isGtbExpanded, setIsGtbExpanded] = useState(false);
+  const [sendingControl, setSendingControl] = useState(null);
+  
+  const updateZoneProperty = useStore((state) => state.updateZoneProperty);
 
   const updateZoneMode = (id, mode) => {
     if (onModeChange) {
@@ -23,9 +28,42 @@ export default function ZoneCard({ zone, onModeChange }) {
 
   const modes = ['ECO', 'NORMAL', 'OFF'];
 
-  const displayedLoad = zone.mode === 'eco' 
-    ? (zone.load_kw * 0.6).toFixed(1) 
-    : (zone.mode === 'off' ? '0.4' : zone.load_kw);
+  const thermostat = zone.temp || 22;
+  const dimmer = zone.dimmer !== undefined ? zone.dimmer : 80;
+  const loadCap = zone.load_cap !== undefined ? zone.load_cap : 100;
+
+  const baseLoad = zone.mode === 'eco' 
+    ? zone.load_kw * 0.6 
+    : (zone.mode === 'off' ? 0.4 : zone.load_kw);
+  const displayedLoad = (baseLoad * (loadCap / 100)).toFixed(1);
+
+  const handleControlChange = async (param, value) => {
+    const storeKey = param === 'temp' ? 'temp' : (param === 'dimmer' ? 'dimmer' : 'load_cap');
+    updateZoneProperty(zone.id, storeKey, value);
+    setSendingControl(param);
+    
+    try {
+      const gtbUrl = localStorage.getItem('energyos_gtb_url');
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      
+      await fetch(`${apiBase}/api/gtb/control`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: gtbUrl,
+          zoneId: zone.id,
+          parameter: param,
+          value: value
+        })
+      });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setTimeout(() => {
+        setSendingControl(null);
+      }, 400);
+    }
+  };
 
   return (
     <Card className="flex flex-col h-full">
@@ -110,6 +148,102 @@ export default function ZoneCard({ zone, onModeChange }) {
           )}
         </div>
       )}
+
+      {/* Direct GTB Control Panel */}
+      <div className="mb-4">
+        <button
+          onClick={() => setIsGtbExpanded(!isGtbExpanded)}
+          className="flex items-center justify-between w-full py-2.5 px-3 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 text-xs font-semibold text-text-primary transition-all duration-200"
+        >
+          <span className="flex items-center gap-2 text-text-muted">
+            <Sliders className="w-3.5 h-3.5 text-accent-cyan" />
+            Contrôle GTB Direct
+          </span>
+          {isGtbExpanded ? (
+            <ChevronUp className="w-4 h-4 text-text-muted" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-text-muted" />
+          )}
+        </button>
+
+        {isGtbExpanded && (
+          <div className="space-y-4 mt-3.5 p-3 rounded-xl border border-white/5 bg-bg-primary/40 text-xs text-text-primary space-y-3.5">
+            {/* Thermostat Setting */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <span className="flex items-center gap-1.5 text-text-muted font-medium">
+                  <Thermometer className="w-3.5 h-3.5 text-accent-cyan" />
+                  Consigne Thermique
+                </span>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                  thermostat < 21 ? 'bg-accent-cyan/10 text-accent-cyan' : 'bg-accent-red/10 text-accent-red'
+                }`}>
+                  {thermostat}°C
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min="16"
+                  max="28"
+                  value={thermostat}
+                  onChange={(e) => handleControlChange('temp', parseInt(e.target.value))}
+                  className="flex-1 accent-accent-cyan bg-white/10 h-1 rounded-lg appearance-none cursor-pointer"
+                />
+                {sendingControl === 'temp' && <Loader2 className="w-3.5 h-3.5 text-accent-cyan animate-spin" />}
+              </div>
+            </div>
+
+            {/* Lighting Dimmer Setting */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <span className="flex items-center gap-1.5 text-text-muted font-medium">
+                  <Sun className={`w-3.5 h-3.5 transition-colors ${dimmer > 50 ? 'text-accent-amber' : 'text-text-muted'}`} />
+                  Gradation Éclairage
+                </span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-accent-amber/10 text-accent-amber">
+                  {dimmer}%
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={dimmer}
+                  onChange={(e) => handleControlChange('dimmer', parseInt(e.target.value))}
+                  className="flex-1 accent-accent-amber bg-white/10 h-1 rounded-lg appearance-none cursor-pointer"
+                />
+                {sendingControl === 'dimmer' && <Loader2 className="w-3.5 h-3.5 text-accent-amber animate-spin" />}
+              </div>
+            </div>
+
+            {/* Load Shedding Capping Setting */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <span className="flex items-center gap-1.5 text-text-muted font-medium">
+                  <Zap className="w-3.5 h-3.5 text-accent-green" />
+                  Limite de Puissance
+                </span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-accent-green/10 text-accent-green">
+                  {loadCap}%
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min="20"
+                  max="100"
+                  value={loadCap}
+                  onChange={(e) => handleControlChange('load_cap', parseInt(e.target.value))}
+                  className="flex-1 accent-accent-green bg-white/10 h-1 rounded-lg appearance-none cursor-pointer"
+                />
+                {sendingControl === 'load_cap' && <Loader2 className="w-3.5 h-3.5 text-accent-green animate-spin" />}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       <div className="mt-auto">
         <div className="flex items-center gap-2 p-1.5 rounded-xl bg-bg-primary/50 border border-white/5">

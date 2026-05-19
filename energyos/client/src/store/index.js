@@ -21,6 +21,9 @@ export const useStore = create((set) => ({
   setAccessCode: (code) => set({ accessCode: code }),
   setGtbEndpoint: (endpoint) => set({ gtbEndpoint: endpoint }),
   setZones: (zones) => set({ zones }),
+  updateZoneProperty: (id, key, value) => set((state) => ({
+    zones: state.zones.map((z) => (z.id === id ? { ...z, [key]: value } : z))
+  })),
   setAlerts: (alerts) => set({ alerts }),
   addAlert: (alert) => set((state) => ({ alerts: [alert, ...state.alerts] })),
   updateLiveData: (data) => set((state) => ({ liveData: { ...state.liveData, ...data } })),
