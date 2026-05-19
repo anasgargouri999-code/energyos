@@ -12,6 +12,7 @@ energyos/docs/diagrams/
 ├── use_cases.puml                 # Actor boundaries & core platform features
 ├── database_schema.puml           # PostgreSQL/Supabase ERD & Row-Level Security
 ├── system_architecture.puml       # Multi-tier Client-Server-Edge Component Topography
+├── iot_connectivity_map.puml      # Operator-Admin-IoT Gateway-Device connection map
 ├── sequence_onboarding.puml       # Secure Onboarding & SMTP code dispatch sequence
 └── sequence_ai_config.puml       # GTB Handshake & Groq AI Optimization loop sequence
 ```
@@ -73,6 +74,15 @@ To ensure investor-ready legibility and sleek aesthetics, all diagrams are desig
     3.  **AI Inference**: Compiles specifications and baseline metrics, dispatching them to Groq's Llama 3.1 LLM.
     4.  **Parsing & Control**: Groq returns highly optimized, clean JSON configs containing eco schedules and load-shedding tables.
     5.  **Synchronization**: The user reviews, confirms, and pushes settings to local relays via Modbus/BACnet schedules, resulting in an average of **17.7% active load reductions**.
+
+### 6. 🌐 IoT Connection & Stakeholder Map (`iot_connectivity_map.puml`)
+**Purpose**: Maps out how all crucial system elements and stakeholders hook up and communicate in our end-to-end industrial IoT solution.
+*   **Operational Connectivity**:
+    *   `Clinic Operator` monitors and manages ambient parameters (thermostats, dimmers, limits) using the React Dashboard app.
+    *   `Super Admin` manages and reviews facility registration logs through the encrypted admin viewport.
+    *   `Supabase Database` handles transactional lookups and active session telemetry.
+    *   `Node-RED GTB Controller` intercepts proxy requests to route settings to active automation buses.
+    *   `Clinic Devices` (HVAC, Lighting, STEG Meters, Access panels) receive these inputs over native field protocols (**Modbus/BACnet/Wiegand**).
 
 ---
 

@@ -1,0 +1,98 @@
+@startuml IotConnectivityMap
+
+' =========================================================================
+' BRANDING & AESTHETIC CONFIGURATION (Minimalist Professional Theme)
+' =========================================================================
+skinparam backgroundcolor #FFFFFF
+skinparam defaultFontName "Space Grotesk"
+skinparam defaultFontSize 12
+skinparam defaultFontColor #0F172A
+skinparam dpi 150
+skinparam shadowing false
+skinparam roundcorner 6
+
+' Styling Elements
+skinparam ArrowColor #64748B
+skinparam ArrowThickness 1.2
+
+' Custom Component & Node Styling
+skinparam ComponentBackgroundColor #FFFFFF
+skinparam ComponentBorderColor #CBD5E1
+skinparam ComponentFontColor #0F172A
+
+skinparam NodeBackgroundColor #F8FAFC
+skinparam NodeBorderColor #94A3B8
+skinparam NodeFontColor #0F172A
+
+skinparam DatabaseBackgroundColor #FFFFFF
+skinparam DatabaseBorderColor #CBD5E1
+skinparam DatabaseFontColor #0F172A
+
+skinparam ActorBackgroundColor #FFFFFF
+skinparam ActorBorderColor #64748B
+skinparam ActorFontColor #0F172A
+
+' =========================================================================
+' ACTORS & USER INTERFACES
+' =========================================================================
+actor "Clinic Operator\n(Gestionnaire Clinique)" as Operator
+actor "Super Admin\n(Administrateur Système)" as SuperAdmin
+
+node "User Space (Browser Sessions)" {
+  component "EnergyOS Dashboard\n(Client Web React)" as ClientApp
+  component "EnergyOS Admin Space\n(Portail Super Admin)" as AdminSpace
+}
+
+' =========================================================================
+' CENTRAL GATEWAY & SECURITY LAYER
+' =========================================================================
+node "Cloud Infrastructure & Backend Server" {
+  component "Express Server API Gateway\n(Node.js REST Service)" as Backend
+  database "Supabase PostgreSQL\n(Tables: access_requests, access_codes)" as Database
+}
+
+' =========================================================================
+' IOT SOLUTION (SUPERVISION EDGE & DEVICES)
+' =========================================================================
+node "Clinic Edge IoT Network" {
+  node "IoT Supervision Gateway\n(Node-RED GTB Controller)" as IoTGateway {
+    component "Direct REST Endpoint\n(/api/control & /api/ping)" as IoTApi
+    component "Telemetry Stream\n(Live Status Loop)" as IoTTelemetry
+  }
+  
+  node "Clinic Devices & Physical Blocks\n(ULI Panel Nodes)" as Devices {
+    component "HVAC System\n(CTA & Chillers)" as HVAC
+    component "Lighting Block\n(Dimming Control)" as Lighting
+    component "Power Meter\n(STEG Modbus Link)" as Meter
+    component "Access System\n(Wiegand Controllers)" as Access
+  }
+}
+
+' =========================================================================
+' CONNECTIVITY FLOWS
+' =========================================================================
+
+' User Actions
+Operator --> ClientApp : "Supervise & contrôle en direct (Dimmer, Thermostat)"
+SuperAdmin --> AdminSpace : "Gère les requêtes & codes d'accès (Secret Header)"
+
+' UI to Backend
+ClientApp --> Backend : "HTTPS calls: /api/gtb/control"
+AdminSpace --> Backend : "HTTPS calls: /api/admin/approve"
+
+' Backend to Database (Security check & Access)
+Backend <--> Database : "Valide les codes / Enregistre les logs"
+
+' Backend to IoT Gateway (Proxy Bypass)
+Backend ---> IoTApi : "HTTP PROXY command transmission\n(CORS-friendly tunnel)"
+
+' IoT Gateway Internals
+IoTApi --> IoTTelemetry : "Met à jour l'état simulé"
+
+' IoT Gateway to Physical Devices
+IoTTelemetry ---> HVAC : "BACnet/IP (Régulation température)"
+IoTTelemetry ---> Lighting : "Modbus RTU/TCP (Gradation 0-100%)"
+IoTTelemetry ---> Meter : "Modbus TCP (Mesure kW en temps réel)"
+IoTTelemetry ---> Access : "RS-485/Wiegand (Sécurisation des blocs)"
+
+@enduml
