@@ -163,4 +163,48 @@ router.post('/revoke', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/admin/generate-code
+ * Directly generate a code manually
+ * Body: { clinic_name, email, access_level, custom_code }
+ */
+router.post('/generate-code', async (req, res) => {
+  try {
+    const { clinic_name, email, access_level, custom_code } = req.body;
+    if (!email || !clinic_name) {
+      return res.status(400).json({ error: 'Clinique et Email requis' });
+    }
+
+    const code = custom_code?.trim() || generateAccessCode();
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 90); // 90 days
+
+    const { error: insertErr } = await supabase
+      .from('access_codes')
+      .insert({
+        code,
+        email,
+        clinic_name,
+        access_level: access_level || 'standard',
+        active: true,
+        expires_at: expiresAt.toISOString(),
+      });
+
+    if (insertErr) throw insertErr;
+
+    // Send email (non-blocking)
+    try {
+      await sendAccessCodeEmail(email, clinic_name, code);
+      logger.info('Access code email sent (manual)', { email, code });
+    } catch (emailErr) {
+      logger.error('Email send failed (non-blocking, manual)', { error: emailErr.message });
+    }
+
+    res.json({ success: true, code, email, clinic_name, access_level });
+  } catch (err) {
+    logger.error('Failed to generate manual code', { error: err.message });
+    res.status(500).json({ error: 'Erreur lors de la génération du code', details: err.message });
+  }
+});
+
 module.exports = router;

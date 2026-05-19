@@ -8,9 +8,9 @@ export default {
     extend: {
       colors: {
         bg: {
-          primary: '#0A0D14',
-          surface: '#111827',
-          elevated: '#1A2235',
+          primary: 'var(--bg-primary, #0A0D14)',
+          surface: 'var(--bg-surface, #111827)',
+          elevated: 'var(--bg-elevated, #1A2235)',
         },
         accent: {
           cyan: '#00D4FF',
@@ -19,9 +19,9 @@ export default {
           red: '#EF4444',
         },
         text: {
-          primary: '#F1F5F9',
-          muted: '#64748B',
-          subtle: '#374151',
+          primary: 'var(--text-primary, #F1F5F9)',
+          muted: 'var(--text-muted, #64748B)',
+          subtle: 'var(--text-subtle, #374151)',
         }
       },
       fontFamily: {

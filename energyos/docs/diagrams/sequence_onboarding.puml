@@ -1,0 +1,115 @@
+@startuml SequenceOnboarding
+
+
+' =========================================================================
+' BRANDING & AESTHETIC CONFIGURATION (Minimalist Professional Theme)
+' =========================================================================
+skinparam backgroundcolor #FFFFFF
+skinparam defaultFontName "Space Grotesk"
+skinparam defaultFontSize 12
+skinparam defaultFontColor #0F172A
+skinparam dpi 150
+skinparam shadowing false
+skinparam roundcorner 6
+
+' Styling Elements
+skinparam ArrowColor #64748B
+skinparam ArrowThickness 1.2
+
+' Participant Styling
+skinparam ParticipantBackgroundColor #FFFFFF
+skinparam ParticipantBorderColor #CBD5E1
+skinparam ParticipantFontColor #0F172A
+
+' =========================================================================
+' PARTICIPIANTS DEFINITION
+' =========================================================================
+actor "Clinic Operator\n(User)" as Operator
+participant "React Client\n(Browser App)" as Client
+actor "Super Admin\n(EnergyOS Team)" as Admin
+participant "Express Server\n(API Gateway)" as Server
+database "Supabase DB\n(Cloud Backend)" as Supabase
+participant "Gmail SMTP\n(Mail Service)" as Mailer
+
+' =========================================================================
+' LIFELINE SEQUENCE
+' =========================================================================
+
+== Phase 1: Access Inquiry & Registration ==
+Operator -> Client : Fills access request form on Landing page
+activate Client
+Client -> Supabase : direct INSERT into 'access_requests' (pending status)
+activate Supabase
+note right of Supabase
+  Permitted via Supabase RLS Policy:
+  "anon_insert" allows anonymous insertion.
+end note
+Supabase --> Client : 201 Created (request registered)
+deactivate Supabase
+Client --> Operator : Displays "Demande envoyée avec succès" toast
+deactivate Client
+
+== Phase 2: Administrative Review & Approval ==
+Admin -> Client : Navigates to /admin & enters ADMIN_SECRET
+activate Client
+Client -> Server : GET /api/admin/requests (with x-admin-secret header)
+activate Server
+Server -> Server : Verifies ADMIN_SECRET matches environment variable
+alt Invalid Admin Secret
+    Server --> Client : 401 Unauthorized
+    Client --> Admin : Displays auth error modal
+else Valid Admin Secret
+    Server -> Supabase : Reads all pending access requests (via service role)
+    activate Supabase
+    Supabase --> Server : Returns requests list
+    deactivate Supabase
+    Server --> Client : 200 OK (requests array payload)
+    Client --> Admin : Renders admin dashboard tables
+end
+deactivate Server
+deactivate Client
+
+Admin -> Client : Clicks "Approuver" on pending request
+activate Client
+Client -> Server : POST /api/admin/approve (request_id, x-admin-secret)
+activate Server
+Server -> Server : Generates cryptographically secure 8-character code
+Server -> Supabase : INSERT into 'access_codes' (code, email, active=true)
+activate Supabase
+Supabase --> Server : 201 Created (code stored)
+deactivate Supabase
+
+Server -> Mailer : Triggers nodemailer.sendMail() (SMTP Auth)
+activate Mailer
+Mailer -> Operator : Dispatches professional email with Access Code
+deactivate Mailer
+
+Server --> Client : 200 OK (approval confirmed)
+deactivate Server
+Client --> Admin : Refreshes tables & shows approval success toast
+deactivate Client
+
+== Phase 3: Access Validation & Onboarding ==
+Operator -> Client : Receives email, copies code to Onboarding entry page
+activate Client
+Client -> Server : POST /api/auth/validate-code (code, email)
+activate Server
+Server -> Supabase : Queries 'access_codes' for match and expiration
+activate Supabase
+Supabase --> Server : Returns matching record details
+deactivate Supabase
+
+alt Code Not Found / Expired / Inactive
+    Server --> Client : 400 Bad Request (invalid code error)
+    deactivate Server
+    Client --> Operator : Displays French error "Code incorrect ou expiré"
+else Valid Active Code
+    Server --> Client : 200 OK (access authorized, mode: "authenticated")
+    deactivate Server
+    Client -> Client : Sets energyos_mode = "authenticated" in localStorage
+    Client -> Client : Updates Zustand global auth state
+    Client --> Operator : Authorizes and redirects to /connect Setup screen
+end
+deactivate Client
+
+@enduml

@@ -1,0 +1,115 @@
+@startuml SystemArchitecture
+
+
+' =========================================================================
+' BRANDING & AESTHETIC CONFIGURATION (Minimalist Professional Theme)
+' =========================================================================
+skinparam backgroundcolor #FFFFFF
+skinparam defaultFontName "Space Grotesk"
+skinparam defaultFontSize 12
+skinparam defaultFontColor #0F172A
+skinparam dpi 150
+skinparam shadowing false
+skinparam roundcorner 6
+
+' Styling Elements
+skinparam ArrowColor #64748B
+skinparam ArrowThickness 1.2
+
+' Custom Component & Node Styling
+skinparam ComponentBackgroundColor #FFFFFF
+skinparam ComponentBorderColor #CBD5E1
+skinparam ComponentFontColor #0F172A
+
+skinparam NodeBackgroundColor #F8FAFC
+skinparam NodeBorderColor #94A3B8
+skinparam NodeFontColor #0F172A
+
+skinparam DatabaseBackgroundColor #FFFFFF
+skinparam DatabaseBorderColor #CBD5E1
+skinparam DatabaseFontColor #0F172A
+
+skinparam InterfaceBackgroundColor #FFFFFF
+skinparam InterfaceBorderColor #475569
+
+' =========================================================================
+' INFRASTRUCTURE NODES & TIERS
+' =========================================================================
+
+node "User Space & Browser" {
+    node "EnergyOS Client App (React SPA)" as ClientApp {
+        component "React Router v6\n(Lazy Pages)" as Router
+        component "Zustand\n(Global Store)" as StateStore
+        component "Recharts\n(Data Visualizer)" as Visualizer
+        component "Framer Motion\n(Animations)" as Motion
+        component "Supabase / GTB Client\n(SDK Libraries)" as JS_Clients
+    }
+}
+
+node "Cloud Platform Services" {
+    database "Supabase Cloud" as Supabase {
+        component "PostgreSQL Database\n(with RLS Security)" as DB
+        component "Supabase Auth" as Auth
+    }
+    
+    node "Groq Cloud Infrastructure" as GroqCloud {
+        component "Groq AI Engine\n(Llama 3.1 LLM)" as GroqAI
+    }
+    
+    node "Google Cloud Mail Servers" as GoogleMail {
+        component "Gmail SMTP Mailer" as SMTP
+    }
+}
+
+node "EnergyOS API Gateway (Node/Express Server)" as GatewayServer {
+    component "Express HTTP Routing" as RouterExpress
+    component "JWT Auth Middleware" as AuthMW
+    component "Winston Logger" as Logger
+    component "Groq / GTB Proxy Clients" as GatewayClients
+}
+
+node "Clinic Industrial Facility (Edge Network)" as EdgeIoT {
+    node "GTB Supervision Gateway (Node-RED / Linux)" as GTBGateway {
+        component "GTB REST API\n(HTTP Service)" as GTB_API
+        component "BACnet / Modbus\nProtocol Handlers" as ProtocolHandlers
+    }
+    
+    node "Zone Local Automation Panel (ULI Controllers)" as ULI_Panel {
+        component "CTA - Ventilation Controller" as CTA_PLC
+        component "STEG - Power Meter Modbus Link" as Meter_PLC
+        component "Chiller BACnet Controller" as Chiller_PLC
+        component "Access Control PLC" as Access_PLC
+    }
+}
+
+' =========================================================================
+' CONNECTIVITY & INTERACTION PROTOCOLS (Annotated Lines)
+' =========================================================================
+
+' Client to Cloud
+JS_Clients ----> DB : "HTTPS / direct fetch (RLS active)"
+JS_Clients ----> Auth : "HTTPS sign-in & token exchange"
+
+' Client to Server Gateway
+Router ----> RouterExpress : "HTTPS REST API Requests"
+StateStore ----> RouterExpress : "Load & synchronize state"
+
+' Gateway Server Internals & Routing
+RouterExpress --> AuthMW : "validates session header"
+RouterExpress --> Logger : "logs API hits (Winston)"
+RouterExpress --> GatewayClients : "orchestrates proxy flow"
+
+' Gateway to Cloud Services
+GatewayClients --> GroqAI : "HTTPS proxy (Groq SDK)"
+GatewayClients --> SMTP : "SMTP payload (TLS port 587)"
+
+' Gateway to Clinic Edge Gateway (Proxy tunnel avoiding CORS)
+GatewayClients --> GTB_API : "HTTP GET/POST /api/gtb (Proxy)"
+
+' GTB Gateway to Local PLCs (Field Buses)
+ProtocolHandlers ---> CTA_PLC : "BACnet/IP protocol (Port 47808)"
+ProtocolHandlers ---> Chiller_PLC : "BACnet/IP protocol"
+ProtocolHandlers ---> Meter_PLC : "Modbus TCP/IP (Port 502)"
+ProtocolHandlers ---> Access_PLC : "RS-485 / Wiegand protocol"
+
+@enduml

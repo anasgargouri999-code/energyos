@@ -96,6 +96,9 @@ function App() {
 
   /* Rehydrate Zustand from localStorage on mount */
   useEffect(() => {
+    // Initialize light/dark theme
+    useStore.getState().initTheme();
+
     const savedMode = localStorage.getItem(LS_MODE_KEY);
     const savedCode = localStorage.getItem(LS_CODE_KEY);
     const savedGtb = localStorage.getItem(LS_GTB_KEY);

@@ -12,6 +12,8 @@ export default function Connect() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiConfig, setAiConfig] = useState(null);
 
+  const zones = useStore(state => state.zones);
+  const setZones = useStore(state => state.setZones);
   const setGtbEndpoint = useStore(state => state.setGtbEndpoint);
   const setGroqConfig = useStore(state => state.setGroqConfig);
   const navigate = useNavigate();
@@ -56,6 +58,21 @@ export default function Connect() {
     if (aiConfig) {
       setGroqConfig(aiConfig);
       localStorage.setItem('energyos_ai_config', JSON.stringify(aiConfig));
+
+      // Auto-toggle matching zones to eco mode
+      if (aiConfig.eco_schedules) {
+        const updated = zones.map((z) => {
+          const isEcoMatch = aiConfig.eco_schedules.some((s) =>
+            s.zone.toLowerCase().includes(z.name.toLowerCase()) ||
+            z.name.toLowerCase().includes(s.zone.toLowerCase())
+          );
+          if (isEcoMatch) {
+            return { ...z, mode: 'eco' };
+          }
+          return z;
+        });
+        setZones(updated);
+      }
     }
     navigate('/dashboard');
   };

@@ -1,0 +1,117 @@
+@startuml SequenceAIConfig
+
+
+' =========================================================================
+' BRANDING & AESTHETIC CONFIGURATION (Minimalist Professional Theme)
+' =========================================================================
+skinparam backgroundcolor #FFFFFF
+skinparam defaultFontName "Space Grotesk"
+skinparam defaultFontSize 12
+skinparam defaultFontColor #0F172A
+skinparam dpi 150
+skinparam shadowing false
+skinparam roundcorner 6
+
+' Styling Elements
+skinparam ArrowColor #64748B
+skinparam ArrowThickness 1.2
+
+' Participant Styling
+skinparam ParticipantBackgroundColor #FFFFFF
+skinparam ParticipantBorderColor #CBD5E1
+skinparam ParticipantFontColor #0F172A
+
+' =========================================================================
+' PARTICIPIANTS DEFINITION
+' =========================================================================
+actor "Clinic Operator\n(Energy Manager)" as Operator
+participant "React Client\n(Browser App)" as Client
+participant "Express Server\n(API Gateway)" as Server
+participant "Groq Cloud\n(AI API Engine)" as GroqAI
+participant "GTB Gateway\n(Local Supervision)" as GTB
+
+' =========================================================================
+' LIFELINE SEQUENCE
+' =========================================================================
+
+== Phase 1: GTB Connectivity Setup ==
+Operator -> Client : Inputs remote GTB supervision endpoint URL
+activate Client
+Client -> Server : GET /api/gtb/ping?endpoint=url (Proxy Call)
+activate Server
+note right of Server
+  Proxying prevents CORS errors
+  and protects local network paths.
+end note
+
+Server -> GTB : HTTP GET /ping (Network Probe)
+activate GTB
+GTB --> Server : 200 OK (heartbeat successful)
+deactivate GTB
+
+Server --> Client : 200 OK (status: "online")
+deactivate Server
+Client --> Operator : Green Light - "GTB Connecté avec Succès"
+deactivate Client
+
+== Phase 2: Device & Metric Gathering ==
+Operator -> Client : Clicks "Synchroniser Équipements"
+activate Client
+Client -> Server : GET /api/gtb/devices (Fetch Device List)
+activate Server
+Server -> GTB : GET /api/v1/device-list (Queries Modbus/BACnet registry)
+activate GTB
+GTB --> Server : Returns array of connected devices (HVAC, Chillers, Meters)
+deactivate GTB
+Server --> Client : 200 OK (devices array)
+deactivate Server
+Client -> Client : Updates Zustand local state & pre-renders device cards
+Client --> Operator : Renders 8 synchronized active devices
+deactivate Client
+
+== Phase 3: Groq AI Energy Profiling & Auto-Config ==
+Operator -> Client : Clicks "Analyser avec IA (EnergyOS AI)"
+activate Client
+Client --> Operator : Triggers spinner "EnergyOS AI analyse vos équipements..."
+
+' Call Groq AI API (via Server proxy for premium backend secret preservation)
+Client -> Server : POST /api/groq/auto-config (devices, monthly_baseline)
+activate Server
+Server -> Server : Compiles optimization prompt including device specs
+Server -> GroqAI : POST chat/completions (Llama-3.1 model, payload)
+activate GroqAI
+note right of GroqAI
+  Groq processes devices list
+  and 12-month energy baseline,
+  optimizing HVAC & lighting cycles.
+end note
+GroqAI --> Server : Returns clean JSON completion schema
+deactivate GroqAI
+
+Server --> Client : 200 OK (eco_schedules, delestage_priority, ipe_thresholds, summary)
+deactivate Server
+
+Client --> Operator : Stops spinner; renders clean configuration preview card
+deactivate Client
+
+== Phase 4: Verification & Application ==
+Operator -> Client : Reviews recommendations and clicks "Accepter"
+activate Client
+
+Client -> Client : Saves active config to local storage
+Client -> Client : Applies custom energy baseline thresholds to charts
+Client -> Client : Triggers simulated telemetry changes (average load reduction ~17.7%)
+
+Client -> Server : POST /api/gtb/apply-config (eco_schedules)
+activate Server
+Server -> GTB : POST /api/v1/schedules (Configures local relay schedules)
+activate GTB
+GTB --> Server : 200 OK (timers written)
+deactivate GTB
+Server --> Client : 200 OK (configuration synchronized)
+deactivate Server
+
+Client --> Operator : Displays success notification and triggers live Dashboard optimization views
+deactivate Client
+
+@enduml

@@ -3,7 +3,7 @@ const router = express.Router();
 const Groq = require('groq-sdk');
 
 const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY || 'placeholder-key',
+  apiKey: process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || 'placeholder-key',
 });
 
 // POST /auto-config: server-side Groq call (fallback if client key missing)

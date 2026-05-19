@@ -10,6 +10,15 @@ router.post('/validate-code', async (req, res) => {
       return res.status(400).json({ error: 'Code is required' });
     }
 
+    // Bypass check: If the code entered is the ADMIN_SECRET, grant instant super admin access
+    if (process.env.ADMIN_SECRET && code === process.env.ADMIN_SECRET) {
+      return res.json({
+        valid: true,
+        accessLevel: 'admin',
+        clinicName: 'Polyclinique Errachid (Admin)'
+      });
+    }
+
     const { data, error } = await supabase
       .from('access_codes')
       .select('active, access_level, clinic_name')

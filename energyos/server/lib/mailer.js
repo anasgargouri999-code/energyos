@@ -1,13 +1,15 @@
 const nodemailer = require('nodemailer');
 require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 
-const transporter = nodemailer.createTransport({
+const hasSmtp = process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD;
+
+const transporter = hasSmtp ? nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_APP_PASSWORD,
   },
-});
+}) : null;
 
 /**
  * Send an access code email to a clinic
@@ -30,12 +32,18 @@ async function sendAccessCodeEmail(to, clinicName, code) {
     </div>
   `;
 
-  await transporter.sendMail({
-    from: `"EnergyOS" <${process.env.GMAIL_USER}>`,
-    to,
-    subject: `Votre code d'accès EnergyOS — ${clinicName}`,
-    html,
-  });
+  console.log(`[MAIL MOCK] Mail destination: ${to} | Clinic: ${clinicName} | Code: ${code}`);
+
+  if (transporter) {
+    await transporter.sendMail({
+      from: `"EnergyOS" <${process.env.GMAIL_USER}>`,
+      to,
+      subject: `Votre code d'accès EnergyOS — ${clinicName}`,
+      html,
+    });
+  } else {
+    console.log('[MAIL MOCK] Gmail SMTP is commented out / not configured. Email logged instead.');
+  }
 }
 
 module.exports = { sendAccessCodeEmail };

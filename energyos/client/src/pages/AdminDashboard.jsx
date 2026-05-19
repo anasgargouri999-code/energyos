@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Shield, LogOut, Users, Clock, CheckCircle, XCircle,
-  ChevronDown, ChevronUp, Copy, RefreshCw, Lock
+  ChevronDown, ChevronUp, Copy, RefreshCw, Lock,
+  Plus, X, Key, Mail, Building
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Badge from '../components/ui/Badge';
@@ -202,6 +203,57 @@ export default function AdminDashboard() {
   const [loadingCodes, setLoadingCodes] = useState(true);
   const [expandedRow, setExpandedRow] = useState(null);
   const [actionLoading, setActionLoading] = useState(null); // request_id being acted on
+
+  // Manual code generation states
+  const [showGenModal, setShowGenModal] = useState(false);
+  const [genClinicName, setGenClinicName] = useState('');
+  const [genEmail, setGenEmail] = useState('');
+  const [genAccessLevel, setGenAccessLevel] = useState('standard');
+  const [genCustomCode, setGenCustomCode] = useState('');
+  const [genLoading, setGenLoading] = useState(false);
+
+  async function handleGenerateManualCode(e) {
+    e.preventDefault();
+    if (!genClinicName.trim() || !genEmail.trim()) {
+      toast.error('Veuillez remplir les champs obligatoires.');
+      return;
+    }
+    setGenLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/generate-code`, {
+        method: 'POST',
+        headers: adminHeaders(),
+        body: JSON.stringify({
+          clinic_name: genClinicName.trim(),
+          email: genEmail.trim(),
+          access_level: genAccessLevel,
+          custom_code: genCustomCode.trim() || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Erreur serveur');
+      }
+
+      const data = await res.json();
+      toast.success(`Code ${data.code} généré avec succès !`);
+      
+      // Reset form
+      setGenClinicName('');
+      setGenEmail('');
+      setGenAccessLevel('standard');
+      setGenCustomCode('');
+      setShowGenModal(false);
+
+      // Reload
+      fetchCodes();
+    } catch (err) {
+      toast.error(err.message || 'Impossible de générer le code');
+    } finally {
+      setGenLoading(false);
+    }
+  }
 
   /* ── Fetch data ── */
 
@@ -410,14 +462,23 @@ export default function AdminDashboard() {
             <h2 className="text-lg font-semibold text-text-primary font-display">
               Demandes d'accès
             </h2>
-            <button
-              id="refresh-requests-btn"
-              onClick={() => { fetchRequests(); fetchCodes(); }}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm text-text-muted hover:text-accent-cyan border border-white/10 rounded-xl hover:bg-bg-elevated transition"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Actualiser
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowGenModal(true)}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm bg-accent-cyan text-bg-primary font-semibold rounded-xl hover:brightness-110 transition cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                Générer un Code
+              </button>
+              <button
+                id="refresh-requests-btn"
+                onClick={() => { fetchRequests(); fetchCodes(); }}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-text-muted hover:text-accent-cyan border border-white/10 rounded-xl hover:bg-bg-elevated transition"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Actualiser
+              </button>
+            </div>
           </div>
 
           <div className="bg-bg-surface border border-white/5 rounded-2xl overflow-hidden">
@@ -626,6 +687,110 @@ export default function AdminDashboard() {
             </div>
           </div>
         </section>
+        {/* Manual Code Generation Modal */}
+        {showGenModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="bg-bg-surface border border-white/10 w-full max-w-md rounded-2xl p-6 shadow-2xl relative animate-in scale-in duration-300">
+              <div className="flex items-center justify-between pb-3 border-b border-white/5 mb-5">
+                <div className="flex items-center gap-2">
+                  <Key className="w-5 h-5 text-accent-cyan animate-pulse" />
+                  <span className="font-semibold text-text-primary text-sm font-display">
+                    Générer un Code d'Accès
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowGenModal(false)}
+                  className="text-text-muted hover:text-text-primary transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleGenerateManualCode} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">
+                    Nom de la Clinique *
+                  </label>
+                  <div className="relative">
+                    <Building className="absolute left-3 top-3 w-4 h-4 text-text-muted" />
+                    <input
+                      type="text"
+                      required
+                      value={genClinicName}
+                      onChange={(e) => setGenClinicName(e.target.value)}
+                      placeholder="Ex: Polyclinique Errachid"
+                      className="w-full pl-10 pr-4 py-2.5 bg-bg-elevated border border-white/10 rounded-xl text-text-primary placeholder:text-text-muted text-sm focus:outline-none focus:border-accent-cyan transition-colors"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">
+                    Adresse Email *
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 w-4 h-4 text-text-muted" />
+                    <input
+                      type="email"
+                      required
+                      value={genEmail}
+                      onChange={(e) => setGenEmail(e.target.value)}
+                      placeholder="Ex: admin@errachid.com"
+                      className="w-full pl-10 pr-4 py-2.5 bg-bg-elevated border border-white/10 rounded-xl text-text-primary placeholder:text-text-muted text-sm focus:outline-none focus:border-accent-cyan transition-colors"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">
+                    Niveau d'Accès
+                  </label>
+                  <select
+                    value={genAccessLevel}
+                    onChange={(e) => setGenAccessLevel(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-bg-elevated border border-white/10 rounded-xl text-text-primary text-sm focus:outline-none focus:border-accent-cyan transition-colors"
+                  >
+                    <option value="standard">Standard (Tableau de Bord)</option>
+                    <option value="admin">Administrateur (Super Admin)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">
+                    Code d'accès Personnalisé (Optionnel)
+                  </label>
+                  <input
+                    type="text"
+                    value={genCustomCode}
+                    onChange={(e) => setGenCustomCode(e.target.value)}
+                    placeholder="Ex: ECO-2026 (Laisser vide pour auto)"
+                    className="w-full px-4 py-2.5 bg-bg-elevated border border-white/10 rounded-xl text-text-primary font-mono placeholder:text-text-muted text-sm focus:outline-none focus:border-accent-cyan transition-colors"
+                  />
+                  <p className="text-[10px] text-text-muted mt-1">
+                    Si vide, le système génère un code sécurisé unique de 8 caractères.
+                  </p>
+                </div>
+
+                <div className="pt-4 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowGenModal(false)}
+                    className="flex-1 py-2.5 border border-white/10 text-text-primary text-sm font-semibold rounded-xl hover:bg-bg-elevated transition cursor-pointer"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={genLoading}
+                    className="flex-1 py-2.5 bg-accent-cyan text-bg-primary text-sm font-bold rounded-xl hover:brightness-110 transition disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    Générer
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

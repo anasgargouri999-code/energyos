@@ -1,0 +1,104 @@
+@startuml UseCases
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam defaultFontColor #333333
+skinparam shadowing false
+skinparam roundcorner 8
+
+skinparam rectangle {
+  BackgroundColor #F8F9FA
+  BorderColor #DEE2E6
+  FontColor #212529
+  FontSize 14
+  RoundCorner 8
+}
+
+skinparam usecase {
+  BackgroundColor white
+  BorderColor #94A3B8
+  FontColor #0F172A
+  FontSize 11
+  BorderThickness 1.2
+}
+
+skinparam actor {
+  BackgroundColor white
+  BorderColor #475569
+  FontColor #0F172A
+  BorderThickness 1.5
+}
+
+skinparam arrow {
+  Color #6C757D
+  FontColor #6C757D
+  FontSize 10
+  Thickness 1
+}
+
+skinparam package {
+  BackgroundColor #FFFFFF
+  BorderColor #CBD5E1
+  FontColor #475569
+  FontSize 11
+  FontStyle italic
+}
+
+left to right direction
+
+actor "Super Admin" as Admin
+actor "Operateur Clinique\n(Energy Manager)" as Operator
+component "Groq AI Engine" as GroqAI #E8F4FD
+component "Controleur GTB\n(Materiel On-site)" as GTB #E8F4FD
+
+rectangle "Plateforme EnergyOS" {
+
+  package "Acces & Onboarding" {
+    usecase "Demander acces\n(Formulaire Landing)" as UC1
+    usecase "Approuver demande &\nGenerer code d'acces" as UC2
+    usecase "Valider code d'acces\n(Onboarding)" as UC3
+  }
+
+  package "Telemetrie & Monitoring" {
+    usecase "Superviser puissance\ntemps reel (cos phi, peak)" as UC4
+    usecase "Voir statut des\nequipements connectes" as UC5
+    usecase "Acquitter les alertes" as UC10
+  }
+
+  package "Optimisation IA" {
+    usecase "Connecter serveur GTB" as UC6
+    usecase "Lancer auto-config IA" as UC7
+    usecase "Appliquer plannings\neco HVAC & eclairage" as UC8
+  }
+
+  package "Controle & Simulation" {
+    usecase "Modifier mode zone\n(Normal / Eco / Off)" as UC9
+    usecase "Declencher delestage\n(Protection Peak)" as UC11
+    usecase "Lancer simulation\nSandbox (Demo)" as UC12
+  }
+}
+
+Admin --> UC2
+UC2 .> UC1 : <<include>>
+
+Operator --> UC1
+Operator --> UC3
+Operator --> UC4
+Operator --> UC5
+Operator --> UC10
+Operator --> UC6
+Operator --> UC7
+Operator --> UC9
+Operator --> UC11
+Operator --> UC12
+
+UC7 --> GroqAI : analyser
+UC7 .> UC8 : <<include>>
+
+UC4 <.. GTB : telemetrie
+UC5 <.. GTB : sync statut
+UC8 --> GTB : push profils
+UC9 --> GTB : controle charge
+UC11 --> GTB : delestage
+
+@enduml

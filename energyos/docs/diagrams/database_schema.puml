@@ -1,0 +1,163 @@
+@startuml DatabaseSchema
+
+
+' =========================================================================
+' BRANDING & AESTHETIC CONFIGURATION (Minimalist Professional Theme)
+' =========================================================================
+skinparam backgroundcolor #FFFFFF
+skinparam defaultFontName "Space Grotesk"
+skinparam defaultFontSize 12
+skinparam defaultFontColor #0F172A
+skinparam dpi 150
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam linetype ortho
+
+' Styling Elements
+skinparam ArrowColor #64748B
+skinparam ArrowThickness 1.2
+
+' Entity specific styles (Flat compatible syntax)
+skinparam ClassBackgroundColor #FFFFFF
+skinparam ClassBorderColor #CBD5E1
+skinparam ClassHeaderBackgroundColor #F8FAFC
+skinparam ClassFontColor #0F172A
+skinparam ClassFontSize 12
+skinparam ClassAttributeFontColor #475569
+skinparam ClassAttributeFontSize 11
+
+' =========================================================================
+' SCHEMAS & TABLES DEFINITION
+' =========================================================================
+
+package "Access Control System" {
+    entity "access_requests" as requests {
+        * **id** : UUID <<PK>>
+        --
+        * **full_name** : VARCHAR(255)
+        * **clinic_name** : VARCHAR(255)
+        * **email** : VARCHAR(255)
+        phone : VARCHAR(50)
+        country : VARCHAR(100)
+        message : TEXT
+        status : VARCHAR(50) [pending, approved, rejected]
+        * **created_at** : TIMESTAMPTZ
+    }
+
+    entity "access_codes" as codes {
+        * **id** : UUID <<PK>>
+        --
+        * **code** : VARCHAR(100) <<UQ>>
+        request_id : UUID <<FK>>
+        * **email** : VARCHAR(255)
+        clinic_name : VARCHAR(255)
+        access_level : VARCHAR(50) [standard, admin]
+        * **active** : BOOLEAN
+        * **created_at** : TIMESTAMPTZ
+        expires_at : TIMESTAMPTZ
+    }
+}
+
+package "Clinic Operations & IoT Inventory" {
+    entity "clinics" as clinics {
+        * **id** : UUID <<PK>>
+        --
+        * **name** : VARCHAR(255)
+        address : TEXT
+        city : VARCHAR(100)
+        * **country** : VARCHAR(100)
+        * **subscribed_power_kw** : NUMERIC(10,2)
+        m2_surface_area : NUMERIC(10,2)
+        * **created_at** : TIMESTAMPTZ
+    }
+
+    entity "zones" as zones {
+        * **id** : UUID <<PK>>
+        --
+        * **clinic_id** : UUID <<FK>>
+        * **name** : VARCHAR(255)
+        * **type** : VARCHAR(50) [medical, admin, support, external]
+        * **priority** : INTEGER [1 = Critical, 5 = Sheddable]
+        * **operating_mode** : VARCHAR(50) [normal, eco, off, auto]
+        target_temp_c : NUMERIC(4,1)
+        target_humidity_percent : NUMERIC(4,1)
+        * **created_at** : TIMESTAMPTZ
+    }
+
+    entity "devices" as devices {
+        * **id** : UUID <<PK>>
+        --
+        * **zone_id** : UUID <<FK>>
+        * **name** : VARCHAR(255)
+        * **type** : VARCHAR(50) [hvac, meter, lighting, access, safety]
+        * **protocol** : VARCHAR(50) [BACnet, Modbus, LonWorks, RS485]
+        * **status** : VARCHAR(50) [online, offline]
+        load_rating_kw : NUMERIC(8,2)
+        ip_address : VARCHAR(45)
+        port : INTEGER
+        * **created_at** : TIMESTAMPTZ
+    }
+}
+
+package "Telemetry & Intelligence Logs" {
+    entity "energy_metrics" as metrics {
+        * **id** : BIGINT <<PK>> <<Identity>>
+        --
+        * **clinic_id** : UUID <<FK>>
+        * **timestamp** : TIMESTAMPTZ
+        * **total_power_kw** : NUMERIC(10,2)
+        * **today_kwh** : NUMERIC(12,2)
+        * **cos_phi** : NUMERIC(4,2)
+        * **peak_kw_today** : NUMERIC(10,2)
+        * **is_optimized** : BOOLEAN
+    }
+
+    entity "alerts_log" as alerts {
+        * **id** : UUID <<PK>>
+        --
+        zone_id : UUID <<FK>>
+        * **severity** : VARCHAR(50) [info, warning, critical]
+        * **message** : TEXT
+        * **timestamp** : TIMESTAMPTZ
+        * **acknowledged** : BOOLEAN
+        acknowledged_at : TIMESTAMPTZ
+    }
+
+    entity "ai_optimizations" as ai_configs {
+        * **id** : UUID <<PK>>
+        --
+        * **clinic_id** : UUID <<FK>>
+        * **config_json** : JSONB
+        * **savings_projected_percent** : NUMERIC(4,1)
+        * **summary** : TEXT
+        * **created_at** : TIMESTAMPTZ
+        applied_at : TIMESTAMPTZ
+    }
+}
+
+' =========================================================================
+' DEFINITIONS OF RELATIONSHIPS (Crow's Foot Notation)
+' =========================================================================
+
+requests ||--o| codes : "generates access code"
+clinics ||--|{ requests : "manages inquiries"
+clinics ||--|{ zones : "divides into functional zones"
+zones ||--|{ devices : "houses hardware devices"
+clinics ||--|{ metrics : "aggregates raw telemetry"
+zones ||--|{ alerts : "raises system alerts"
+clinics ||--|{ ai_configs : "applies optimization profiles"
+
+note bottom of requests
+  **RLS Policies Enabled:**
+  - anon: INSERT only
+  - authenticated: None
+  - service_role: ALL (Read/Write)
+end note
+
+note bottom of codes
+  **RLS Policies Enabled:**
+  - anon/authenticated: Read-only check
+  - service_role: Full administration
+end note
+
+@enduml
