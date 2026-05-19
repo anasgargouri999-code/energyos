@@ -1,11 +1,13 @@
 import Groq from 'groq-sdk';
 
-const groq = new Groq({
-  apiKey: import.meta.env.VITE_GROQ_API_KEY,
-  dangerouslyAllowBrowser: true  // OK for demo
-});
-
 export async function autoConfigFromDevices(deviceList, monthlyData) {
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY || 'placeholder-key';
+  
+  const groq = new Groq({
+    apiKey: apiKey,
+    dangerouslyAllowBrowser: true  // OK for demo
+  });
+
   const prompt = `
 You are an industrial energy management AI for a medical clinic GTB system.
 Given this list of connected devices and zones: ${JSON.stringify(deviceList)}
