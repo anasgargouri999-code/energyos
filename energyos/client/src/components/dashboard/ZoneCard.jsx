@@ -43,7 +43,7 @@ export default function ZoneCard({ zone, onModeChange }) {
     setSendingControl(param);
     
     try {
-      const gtbUrl = localStorage.getItem('energyos_gtb_url') || 'http://localhost:1880';
+      const gtbUrl = localStorage.getItem('energyos_gtb_url') || 'https://oppressor-fog-unguarded.ngrok-free.dev';
       const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
       
       await fetch(`${apiBase}/api/gtb/control`, {

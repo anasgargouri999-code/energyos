@@ -70,7 +70,7 @@ export default function Schedule() {
   };
 
   const syncSchedulesToGTB = async (currentSchedules) => {
-    const gtbUrl = localStorage.getItem('energyos_gtb_url') || 'http://localhost:1880';
+    const gtbUrl = localStorage.getItem('energyos_gtb_url') || 'https://oppressor-fog-unguarded.ngrok-free.dev';
     try {
       const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
       const zonesGrouped = {};

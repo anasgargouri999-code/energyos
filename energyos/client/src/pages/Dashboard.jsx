@@ -412,7 +412,7 @@ export default function Dashboard() {
     toast.success(`${zoneName} → mode ${newMode.toUpperCase()}`);
 
     try {
-      const gtbUrl = localStorage.getItem('energyos_gtb_url') || 'http://localhost:1880';
+      const gtbUrl = localStorage.getItem('energyos_gtb_url') || 'https://oppressor-fog-unguarded.ngrok-free.dev';
       const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
       
       await fetch(`${baseUrl}/api/gtb/control`, {
