@@ -10,6 +10,7 @@ const Connect = lazy(() => import('./pages/Connect'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Energy = lazy(() => import('./pages/Energy'));
 const Alerts = lazy(() => import('./pages/Alerts'));
+const Schedule = lazy(() => import('./pages/Schedule'));
 const Settings = lazy(() => import('./pages/Settings'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 
@@ -69,6 +70,7 @@ function AppRoutes() {
           {/* Protected dashboard routes */}
           <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
           <Route path="/dashboard/energy" element={<AuthGuard><Energy /></AuthGuard>} />
+          <Route path="/dashboard/schedule" element={<AuthGuard><Schedule /></AuthGuard>} />
           <Route path="/dashboard/alerts" element={<AuthGuard><Alerts /></AuthGuard>} />
           <Route path="/dashboard/settings" element={<AuthGuard><Settings /></AuthGuard>} />
 

@@ -1,10 +1,11 @@
-import { LayoutDashboard, Zap, AlertTriangle, Settings } from 'lucide-react';
+import { LayoutDashboard, Zap, AlertTriangle, Settings, Calendar } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
 export default function Sidebar() {
   const links = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, exact: true },
     { name: 'Énergie', path: '/dashboard/energy', icon: Zap },
+    { name: 'Planification', path: '/dashboard/schedule', icon: Calendar },
     { name: 'Alertes', path: '/dashboard/alerts', icon: AlertTriangle },
     { name: 'Paramètres', path: '/dashboard/settings', icon: Settings },
   ];
