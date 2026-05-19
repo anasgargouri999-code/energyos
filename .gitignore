@@ -1,0 +1,24 @@
+# Node modules
+node_modules/
+energyos/node_modules/
+energyos/client/node_modules/
+energyos/server/node_modules/
+
+# Environment secrets
+.env
+energyos/.env
+energyos/client/.env
+energyos/server/.env
+
+# Production build artifacts
+dist/
+energyos/client/dist/
+
+# Netlify directories
+.netlify/
+energyos/.netlify/
+
+# Obsolete workspace duplicate folders at the root level only
+/client/
+/server/
+/logs/
