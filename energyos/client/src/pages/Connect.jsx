@@ -6,7 +6,7 @@ import { DEMO_DEVICES, MONTHLY_DATA } from '../lib/demoData';
 import { autoConfigFromDevices } from '../lib/groq';
 
 export default function Connect() {
-  const [url, setUrl] = useState('');
+  const [url, setUrl] = useState(localStorage.getItem('energyos_gtb_url') || 'http://localhost:1880');
   const [status, setStatus] = useState('idle'); // idle | loading | success | error404 | error500 | timeout
   const [devices, setDevices] = useState([]);
   const [aiLoading, setAiLoading] = useState(false);

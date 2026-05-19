@@ -222,11 +222,29 @@ export default function Dashboard() {
     }
   }, [zones, liveData.today_kwh, liveData.peak_kw_today, updateLiveData]);
 
-  const handleModeChange = (zoneId, newMode) => {
+  const handleModeChange = async (zoneId, newMode) => {
     const updatedZones = zones.map((z) => (z.id === zoneId ? { ...z, mode: newMode } : z));
     setZones(updatedZones);
     const zoneName = zones.find((z) => z.id === zoneId)?.name;
     toast.success(`${zoneName} → mode ${newMode.toUpperCase()}`);
+
+    try {
+      const gtbUrl = localStorage.getItem('energyos_gtb_url') || 'http://localhost:1880';
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      
+      await fetch(`${baseUrl}/api/gtb/control`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: gtbUrl,
+          zoneId: zoneId,
+          parameter: 'mode',
+          value: newMode
+        })
+      });
+    } catch (err) {
+      console.error('Failed to report mode change to GTB:', err);
+    }
   };
 
   const activeAlertsCount = alerts.filter((a) => !a.acknowledged).length;
