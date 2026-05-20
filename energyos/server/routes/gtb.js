@@ -23,20 +23,22 @@ router.use((req, res, next) => {
   next();
 });
 
-// GET /ping?url=: proxy ping to GTB url, return status
+// GET /ping?url=: probe GTB reachability — any HTTP response counts as alive
 router.get('/ping', async (req, res) => {
   try {
     const { url } = req.query;
     if (!url) return res.status(400).json({ error: 'URL is required' });
 
-    const response = await axios.get(`${url}/api/ping`, {
+    // validateStatus: () => true — don't throw on 4xx/5xx; any HTTP response means the host is up
+    await axios.get(`${url}/api/ping`, {
       headers: { 'ngrok-skip-browser-warning': 'true' },
-      timeout: 5000
+      timeout: 5000,
+      validateStatus: () => true,
     });
-    res.json({ status: response.status, data: response.data });
+    res.json({ status: 200, data: { ok: true } });
   } catch (err) {
-    const status = err.response ? err.response.status : 500;
-    res.status(status).json({ error: 'Failed to ping GTB', details: err.message });
+    // Only reaches here on true network failure (timeout, ECONNREFUSED, DNS)
+    res.status(500).json({ error: 'GTB unreachable', details: err.message });
   }
 });
 
