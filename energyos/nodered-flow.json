@@ -1,0 +1,45 @@
+[
+  {
+    "id": "tab_energyos",
+    "type": "tab",
+    "label": "EnergyOS API",
+    "disabled": false,
+    "info": "EnergyOS GTB simulator — import this into Node-RED to enable all dashboard endpoints."
+  },
+
+  { "id": "http_ping",    "type": "http in",  "z": "tab_energyos", "name": "GET /api/ping",    "url": "/api/ping",             "method": "get",  "upload": false, "swaggerDoc": "", "x": 120, "y": 60,  "wires": [["fn_ping"]] },
+  { "id": "fn_ping",      "type": "function", "z": "tab_energyos", "name": "ping response",    "func": "msg.payload = { ok: true, timestamp: new Date().toISOString() }; msg.statusCode = 200; return msg;", "outputs": 1, "x": 320, "y": 60,  "wires": [["res_ping"]] },
+  { "id": "res_ping",     "type": "http response", "z": "tab_energyos", "name": "", "statusCode": "", "headers": {}, "x": 510, "y": 60, "wires": [] },
+
+  { "id": "http_zones",   "type": "http in",  "z": "tab_energyos", "name": "GET /api/zones",   "url": "/api/zones",            "method": "get",  "upload": false, "swaggerDoc": "", "x": 120, "y": 140, "wires": [["fn_zones"]] },
+  { "id": "fn_zones",     "type": "function", "z": "tab_energyos", "name": "zones response",   "func": "msg.payload = [{\"id\":\"z1\",\"name\":\"Bloc Opératoire 1\",\"type\":\"medical\",\"status\":\"active\",\"mode\":\"normal\",\"temp\":21,\"humidity\":55,\"load_kw\":18.4,\"priority\":1,\"devices\":[{\"id\":\"d1\",\"name\":\"CTA Bloc Principal\",\"protocol\":\"BACnet\",\"status\":\"online\",\"type\":\"hvac\",\"load_rating_kw\":18.4}]},{\"id\":\"z2\",\"name\":\"Bloc Opératoire 2\",\"type\":\"medical\",\"status\":\"active\",\"mode\":\"normal\",\"temp\":20,\"humidity\":58,\"load_kw\":16.1,\"priority\":1,\"devices\":[{\"id\":\"d5\",\"name\":\"CTA Bloc Secondaire\",\"protocol\":\"BACnet\",\"status\":\"online\",\"type\":\"hvac\",\"load_rating_kw\":16.1}]},{\"id\":\"z3\",\"name\":\"Unité de Soins Intensifs\",\"type\":\"medical\",\"status\":\"active\",\"mode\":\"normal\",\"temp\":22,\"humidity\":50,\"load_kw\":12.7,\"priority\":1,\"devices\":[{\"id\":\"d8\",\"name\":\"Chiller Principal #1\",\"protocol\":\"BACnet\",\"status\":\"online\",\"type\":\"hvac\",\"load_rating_kw\":120.0}]},{\"id\":\"z4\",\"name\":\"Salle de Réveil\",\"type\":\"medical\",\"status\":\"active\",\"mode\":\"normal\",\"temp\":23,\"humidity\":52,\"load_kw\":8.2,\"priority\":2,\"devices\":[]},{\"id\":\"z5\",\"name\":\"Consultations Ext. — RDC\",\"type\":\"admin\",\"status\":\"active\",\"mode\":\"eco\",\"temp\":25,\"humidity\":60,\"load_kw\":3.1,\"priority\":3,\"devices\":[]},{\"id\":\"z6\",\"name\":\"Administration\",\"type\":\"admin\",\"status\":\"inactive\",\"mode\":\"off\",\"temp\":28,\"humidity\":65,\"load_kw\":0.4,\"priority\":4,\"devices\":[]},{\"id\":\"z7\",\"name\":\"Pharmacie\",\"type\":\"support\",\"status\":\"active\",\"mode\":\"normal\",\"temp\":20,\"humidity\":45,\"load_kw\":5.6,\"priority\":2,\"devices\":[]},{\"id\":\"z8\",\"name\":\"Laboratoire\",\"type\":\"support\",\"status\":\"active\",\"mode\":\"normal\",\"temp\":21,\"humidity\":50,\"load_kw\":7.3,\"priority\":2,\"devices\":[]},{\"id\":\"z9\",\"name\":\"Hall Principal\",\"type\":\"common\",\"status\":\"active\",\"mode\":\"eco\",\"temp\":26,\"humidity\":62,\"load_kw\":1.8,\"priority\":4,\"devices\":[]},{\"id\":\"z10\",\"name\":\"Parking / Extérieur\",\"type\":\"external\",\"status\":\"active\",\"mode\":\"auto\",\"temp\":null,\"humidity\":null,\"load_kw\":2.2,\"priority\":5,\"devices\":[]}]; return msg;", "outputs": 1, "x": 320, "y": 140, "wires": [["res_zones"]] },
+  { "id": "res_zones",    "type": "http response", "z": "tab_energyos", "name": "", "statusCode": "", "headers": {}, "x": 510, "y": 140, "wires": [] },
+
+  { "id": "http_live",    "type": "http in",  "z": "tab_energyos", "name": "GET /api/energy/live", "url": "/api/energy/live",   "method": "get",  "upload": false, "swaggerDoc": "", "x": 120, "y": 220, "wires": [["fn_live"]] },
+  { "id": "fn_live",      "type": "function", "z": "tab_energyos", "name": "live response",    "func": "var base = 87.3; var noise = (Math.random() - 0.5) * 8; msg.payload = { total_power_kw: parseFloat((base + noise).toFixed(1)), today_kwh: 412.6, cos_phi: 0.87, active_alerts: 2, peak_kw_today: 134.2, subscribed_kw: 260 }; return msg;", "outputs": 1, "x": 320, "y": 220, "wires": [["res_live"]] },
+  { "id": "res_live",     "type": "http response", "z": "tab_energyos", "name": "", "statusCode": "", "headers": {}, "x": 510, "y": 220, "wires": [] },
+
+  { "id": "http_alerts",  "type": "http in",  "z": "tab_energyos", "name": "GET /api/alerts",  "url": "/api/alerts",           "method": "get",  "upload": false, "swaggerDoc": "", "x": 120, "y": 300, "wires": [["fn_alerts"]] },
+  { "id": "fn_alerts",    "type": "function", "z": "tab_energyos", "name": "alerts response",  "func": "msg.payload = [{\"id\":\"a1\",\"severity\":\"warning\",\"zone\":\"Consultations Ext. — RDC\",\"message\":\"Facteur de puissance cos φ = 0.71 (seuil: 0.85)\",\"time\":\"14:32\",\"acknowledged\":false},{\"id\":\"a2\",\"severity\":\"info\",\"zone\":\"Administration\",\"message\":\"Zone inactive depuis 47 min — passage en mode Éco automatique\",\"time\":\"13:55\",\"acknowledged\":true},{\"id\":\"a3\",\"severity\":\"critical\",\"zone\":\"Groupe Électrogène\",\"message\":\"Puissance souscrite à 89% — délestage imminent\",\"time\":\"11:20\",\"acknowledged\":false},{\"id\":\"a4\",\"severity\":\"info\",\"zone\":\"Parking / Extérieur\",\"message\":\"Éclairage externe activé (luminosité < seuil)\",\"time\":\"07:45\",\"acknowledged\":true}]; return msg;", "outputs": 1, "x": 320, "y": 300, "wires": [["res_alerts"]] },
+  { "id": "res_alerts",   "type": "http response", "z": "tab_energyos", "name": "", "statusCode": "", "headers": {}, "x": 510, "y": 300, "wires": [] },
+
+  { "id": "http_cfg_get", "type": "http in",  "z": "tab_energyos", "name": "GET /api/config",  "url": "/api/config",           "method": "get",  "upload": false, "swaggerDoc": "", "x": 120, "y": 380, "wires": [["fn_cfg_get"]] },
+  { "id": "fn_cfg_get",   "type": "function", "z": "tab_energyos", "name": "config get",       "func": "msg.payload = { eco_schedules: [], ipe_threshold: 180, alert_cos_phi: 0.85, gtb_active: true }; return msg;", "outputs": 1, "x": 320, "y": 380, "wires": [["res_cfg_get"]] },
+  { "id": "res_cfg_get",  "type": "http response", "z": "tab_energyos", "name": "", "statusCode": "", "headers": {}, "x": 510, "y": 380, "wires": [] },
+
+  { "id": "http_cfg_post","type": "http in",  "z": "tab_energyos", "name": "POST /api/config", "url": "/api/config",           "method": "post", "upload": false, "swaggerDoc": "", "x": 120, "y": 460, "wires": [["fn_cfg_post"]] },
+  { "id": "fn_cfg_post",  "type": "function", "z": "tab_energyos", "name": "config post",      "func": "msg.payload = { ok: true }; return msg;", "outputs": 1, "x": 320, "y": 460, "wires": [["res_cfg_post"]] },
+  { "id": "res_cfg_post", "type": "http response", "z": "tab_energyos", "name": "", "statusCode": "", "headers": {}, "x": 510, "y": 460, "wires": [] },
+
+  { "id": "http_ctrl",    "type": "http in",  "z": "tab_energyos", "name": "POST /api/control","url": "/api/control",          "method": "post", "upload": false, "swaggerDoc": "", "x": 120, "y": 540, "wires": [["fn_ctrl"]] },
+  { "id": "fn_ctrl",      "type": "function", "z": "tab_energyos", "name": "control response", "func": "msg.payload = { ok: true, zoneId: msg.payload.zoneId, parameter: msg.payload.parameter, value: msg.payload.value }; return msg;", "outputs": 1, "x": 320, "y": 540, "wires": [["res_ctrl"]] },
+  { "id": "res_ctrl",     "type": "http response", "z": "tab_energyos", "name": "", "statusCode": "", "headers": {}, "x": 510, "y": 540, "wires": [] },
+
+  { "id": "http_ack",     "type": "http in",  "z": "tab_energyos", "name": "POST /api/alerts/:id/acknowledge", "url": "/api/alerts/:alertId/acknowledge", "method": "post", "upload": false, "swaggerDoc": "", "x": 120, "y": 620, "wires": [["fn_ack"]] },
+  { "id": "fn_ack",       "type": "function", "z": "tab_energyos", "name": "ack response",     "func": "msg.payload = { ok: true, alertId: msg.req.params.alertId }; return msg;", "outputs": 1, "x": 320, "y": 620, "wires": [["res_ack"]] },
+  { "id": "res_ack",      "type": "http response", "z": "tab_energyos", "name": "", "statusCode": "", "headers": {}, "x": 510, "y": 620, "wires": [] },
+
+  { "id": "http_reset",   "type": "http in",  "z": "tab_energyos", "name": "POST /api/zones/reset", "url": "/api/zones/reset", "method": "post", "upload": false, "swaggerDoc": "", "x": 120, "y": 700, "wires": [["fn_reset"]] },
+  { "id": "fn_reset",     "type": "function", "z": "tab_energyos", "name": "reset response",   "func": "msg.payload = { ok: true, zones_reset: 10 }; return msg;", "outputs": 1, "x": 320, "y": 700, "wires": [["res_reset"]] },
+  { "id": "res_reset",    "type": "http response", "z": "tab_energyos", "name": "", "statusCode": "", "headers": {}, "x": 510, "y": 700, "wires": [] }
+]

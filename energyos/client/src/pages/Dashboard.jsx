@@ -307,9 +307,9 @@ export default function Dashboard() {
   useEffect(() => {
     if (zones.length > 0) {
       const interval = setInterval(() => {
-        // If a real local GTB is connected and NOT in demo mode, poll GTB
+        // Only poll GTB when confirmed live — gtbStatus in effect deps keeps closure fresh
         const gtbUrl = localStorage.getItem('energyos_gtb_url');
-        if (gtbUrl && mode !== 'demo') {
+        if (gtbUrl && mode !== 'demo' && gtbStatus === 'live') {
           const baseUrl = getApiBaseUrl();
 
           // Poll zones
@@ -402,7 +402,7 @@ export default function Dashboard() {
 
       return () => clearInterval(interval);
     }
-  }, [zones, liveData.today_kwh, liveData.peak_kw_today, updateLiveData]);
+  }, [zones, liveData.today_kwh, liveData.peak_kw_today, updateLiveData, gtbStatus, mode]);
 
   const handleModeChange = async (zoneId, newMode) => {
     const prevZones = zones;
