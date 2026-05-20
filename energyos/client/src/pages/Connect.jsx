@@ -13,7 +13,15 @@ export default function Connect() {
   const navigate = useNavigate();
 
   const handleTestConnection = async () => {
-    let cleanUrl = url.trim().replace(/\/+$/, '').replace(/\/ui$/, '');
+    let cleanUrl = url.trim();
+    try {
+      if (!/^https?:\/\//i.test(cleanUrl)) {
+        cleanUrl = 'http://' + cleanUrl;
+      }
+      cleanUrl = new URL(cleanUrl).origin;
+    } catch {
+      // Fallback if parsing fails
+    }
     if (!cleanUrl) return;
     
     setUrl(cleanUrl);

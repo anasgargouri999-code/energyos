@@ -2,14 +2,24 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 
-// Middleware to clean/sanitize the GTB URL parameter (removes trailing slashes and '/ui')
+// Helper to clean/sanitize GTB URLs to extract only protocol, host, and port (stripping hashes, socket IDs, UI subpaths)
+function cleanGtbUrl(rawUrl) {
+  if (!rawUrl) return '';
+  try {
+    let input = rawUrl.trim();
+    if (!/^https?:\/\//i.test(input)) {
+      input = 'http://' + input;
+    }
+    return new URL(input).origin;
+  } catch {
+    return rawUrl;
+  }
+}
+
+// Middleware to clean/sanitize the GTB URL parameter
 router.use((req, res, next) => {
-  if (req.query.url) {
-    req.query.url = req.query.url.trim().replace(/\/+$/, '').replace(/\/ui$/, '');
-  }
-  if (req.body.url) {
-    req.body.url = req.body.url.trim().replace(/\/+$/, '').replace(/\/ui$/, '');
-  }
+  if (req.query.url) req.query.url = cleanGtbUrl(req.query.url);
+  if (req.body.url) req.body.url = cleanGtbUrl(req.body.url);
   next();
 });
 
