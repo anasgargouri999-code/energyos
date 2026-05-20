@@ -58,6 +58,33 @@ package "Access Control System" {
     }
 }
 
+package "Solar Lead Capture" {
+    entity "solar_requests" as solar {
+        * **id** : UUID <<PK>>
+        --
+        * **full_name** : TEXT
+        * **email** : TEXT
+        phone : TEXT
+        address : TEXT
+        * **request_type** : TEXT [home, hospital, agriculture, commercial, other]
+        monthly_steg_bill : NUMERIC
+        monthly_consumption_kwh : NUMERIC
+        panels_estimate : INTEGER
+        estimated_cost : NUMERIC
+        message : TEXT
+        * **status** : TEXT [pending, contacted, quoted, installed, cancelled]
+        * **created_at** : TIMESTAMPTZ
+        * **updated_at** : TIMESTAMPTZ
+    }
+
+    note bottom of solar
+      **RLS Policies:**
+      - anon/authenticated: INSERT only
+      - service_role: ALL (Admin CRM panel)
+      updated_at auto-managed by trigger.
+    end note
+}
+
 package "Clinic Operations & IoT Inventory" {
     entity "clinics" as clinics {
         * **id** : UUID <<PK>>

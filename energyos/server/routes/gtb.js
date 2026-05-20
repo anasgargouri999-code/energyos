@@ -8,7 +8,7 @@ router.get('/ping', async (req, res) => {
     const { url } = req.query;
     if (!url) return res.status(400).json({ error: 'URL is required' });
 
-    const response = await axios.get(url, { timeout: 5000 });
+    const response = await axios.get(`${url}/api/ping`, { timeout: 5000 });
     res.json({ status: response.status, data: response.data });
   } catch (err) {
     const status = err.response ? err.response.status : 500;
@@ -43,6 +43,9 @@ router.post('/control', async (req, res) => {
 
     res.json({ status: 'ok', mock: true, message: `Command ${parameter}=${value} simulated successfully` });
   } catch (err) {
+    if (err.response) {
+      return res.status(err.response.status).json(err.response.data);
+    }
     res.json({ status: 'mock_fallback', details: err.message });
   }
 });
@@ -129,6 +132,43 @@ router.post('/config', async (req, res) => {
   } catch (err) {
     const status = err.response ? err.response.status : 500;
     res.status(status).json({ error: 'Failed to update config in GTB', details: err.message });
+  }
+});
+
+// POST /zones/reset: proxy zone reset (all zones back to normal mode)
+router.post('/zones/reset', async (req, res) => {
+  try {
+    const { url } = req.body;
+    console.log('[GTB ZONES RESET] Resetting all zones to normal mode');
+
+    if (url) {
+      const response = await axios.post(`${url}/api/zones/reset`, {}, { timeout: 3000 });
+      return res.json(response.data);
+    }
+
+    res.json({ ok: true, zones_reset: 10, mock: true });
+  } catch (err) {
+    console.error('[GTB ZONES RESET] Error:', err.message);
+    res.status(502).json({ error: 'Failed to reset zones in GTB', details: err.message });
+  }
+});
+
+// POST /zones/:zoneId/mode: proxy zone mode change
+router.post('/zones/:zoneId/mode', async (req, res) => {
+  try {
+    const { url, mode } = req.body;
+    const { zoneId } = req.params;
+    console.log(`[GTB ZONE MODE] Zone=${zoneId}, Mode=${mode}`);
+
+    if (url) {
+      const response = await axios.post(`${url}/api/zones/${zoneId}/mode`, { mode }, { timeout: 3000 });
+      return res.json(response.data);
+    }
+
+    res.json({ ok: true, mock: true });
+  } catch (err) {
+    console.error('[GTB ZONE MODE] Error:', err.message);
+    res.status(502).json({ error: 'Failed to set zone mode in GTB', details: err.message });
   }
 });
 

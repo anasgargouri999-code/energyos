@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(node index.js)",
+      "Bash(Start-Sleep -Seconds 3)",
+      "Bash(Invoke-RestMethod -Uri \"http://localhost:3001/api/health\" -Method GET)",
+      "Skill(frontend-design)",
+      "Skill(frontend-design:*)",
+      "PowerShell(head -50)",
+      "Bash(find \"c:/Users/djla7/Downloads/pfe anas/simulation\" -type f | head -50)",
+      "Read(//c/Users/djla7/Downloads/pfe anas/simulation/**)",
+      "Bash(node generate-flow.js)",
+      "Bash(npx eslint *)",
+      "Bash(npx vite *)"
+    ]
+  }
+}

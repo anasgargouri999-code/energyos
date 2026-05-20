@@ -13,6 +13,8 @@ const Alerts = lazy(() => import('./pages/Alerts'));
 const Schedule = lazy(() => import('./pages/Schedule'));
 const Settings = lazy(() => import('./pages/Settings'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const Solar = lazy(() => import('./pages/Solar'));
+const Documentation = lazy(() => import('./pages/Documentation'));
 
 /* ─── Full-screen loading spinner ─── */
 function LoadingSpinner() {
@@ -51,6 +53,7 @@ function PageTransition({ children }) {
     <div
       className={`transition-opacity duration-300 ease-in-out ${visible ? 'opacity-100' : 'opacity-0'}`}
     >
+      {!visible && <div className="loading-bar" />}
       {children}
     </div>
   );
@@ -66,6 +69,8 @@ function AppRoutes() {
           <Route path="/" element={<Landing />} />
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/connect" element={<Connect />} />
+          <Route path="/solar" element={<Solar />} />
+          <Route path="/documentation" element={<Documentation />} />
 
           {/* Protected dashboard routes */}
           <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
@@ -100,6 +105,12 @@ function App() {
   useEffect(() => {
     // Initialize light/dark theme
     useStore.getState().initTheme();
+
+    // Clear stale ngrok URLs that no longer work
+    const savedGtbCheck = localStorage.getItem(LS_GTB_KEY);
+    if (savedGtbCheck && savedGtbCheck.includes('ngrok')) {
+      localStorage.removeItem(LS_GTB_KEY);
+    }
 
     const savedMode = localStorage.getItem(LS_MODE_KEY);
     const savedCode = localStorage.getItem(LS_CODE_KEY);

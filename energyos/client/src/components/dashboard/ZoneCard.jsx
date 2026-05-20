@@ -38,30 +38,29 @@ export default function ZoneCard({ zone, onModeChange }) {
   const displayedLoad = (baseLoad * (loadCap / 100)).toFixed(1);
 
   const handleControlChange = async (param, value) => {
-    const storeKey = param === 'temp' ? 'temp' : (param === 'dimmer' ? 'dimmer' : 'load_cap');
+    const storeKey = param === 'temp' ? 'temp' : param === 'dimmer' ? 'dimmer' : 'load_cap';
+    // Always update local state immediately for responsive UI
     updateZoneProperty(zone.id, storeKey, value);
     setSendingControl(param);
-    
+
+    const gtbUrl = localStorage.getItem('energyos_gtb_url');
+    if (!gtbUrl) {
+      // Demo/offline mode — local update is enough
+      setTimeout(() => setSendingControl(null), 400);
+      return;
+    }
+
     try {
-      const gtbUrl = localStorage.getItem('energyos_gtb_url') || 'https://oppressor-fog-unguarded.ngrok-free.dev';
       const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-      
       await fetch(`${apiBase}/api/gtb/control`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: gtbUrl,
-          zoneId: zone.id,
-          parameter: param,
-          value: value
-        })
+        body: JSON.stringify({ url: gtbUrl, zoneId: zone.id, parameter: param, value }),
       });
     } catch (err) {
-      console.error(err);
+      console.error('[ZoneCard] GTB control error:', err.message);
     } finally {
-      setTimeout(() => {
-        setSendingControl(null);
-      }, 400);
+      setTimeout(() => setSendingControl(null), 400);
     }
   };
 

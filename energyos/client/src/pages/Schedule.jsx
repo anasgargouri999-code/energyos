@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import Navbar from '../components/layout/Navbar';
 import Sidebar from '../components/layout/Sidebar';
 import { useStore } from '../store';
-import { Clock, Plus, Trash2, X, Calendar as CalendarIcon, Sliders, Moon, Sun, Shield } from 'lucide-react';
+import { Clock, Plus, Trash2, X, Sliders, Brain, Sparkles, Loader2, CheckCircle2, ChevronRight } from 'lucide-react';
+import { autoConfigFromDevices } from '../lib/groq';
+import { MONTHLY_DATA } from '../lib/demoData';
 import toast from 'react-hot-toast';
 
 export default function Schedule() {
@@ -16,7 +18,13 @@ export default function Schedule() {
   } = useStore();
 
   const [showAddModal, setShowAddModal] = useState(false);
-  
+
+  // AI suggestion states
+  const [aiLoading, setAiLoading] = useState(false);
+  const [showSuggestionModal, setShowSuggestionModal] = useState(false);
+  const [suggestedSchedules, setSuggestedSchedules] = useState([]);
+  const [aiSummary, setAiSummary] = useState('');
+
   // Form fields state
   const [scheduleMode, setScheduleMode] = useState('recurring'); // 'recurring' | 'event'
   const [targetType, setTargetType] = useState('device');
@@ -70,7 +78,7 @@ export default function Schedule() {
   };
 
   const syncSchedulesToGTB = async (currentSchedules) => {
-    const gtbUrl = localStorage.getItem('energyos_gtb_url') || 'https://oppressor-fog-unguarded.ngrok-free.dev';
+    const gtbUrl = localStorage.getItem('energyos_gtb_url') || '';
     try {
       const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
       const zonesGrouped = {};
@@ -107,6 +115,46 @@ export default function Schedule() {
     } catch (err) {
       console.error('Failed to sync schedules to GTB:', err);
     }
+  };
+
+  const handleAiSuggest = async () => {
+    setAiLoading(true);
+    try {
+      const allDevices = zones.flatMap(z => (z.devices || []).map(d => ({ ...d, zoneName: z.name, zoneType: z.type })));
+      const config = await autoConfigFromDevices(allDevices, MONTHLY_DATA.baseline);
+
+      const ACTION_MAP = { off: 'off', eco: 'eco', dim_30: 'dim_30' };
+
+      const suggestions = (config.eco_schedules || []).map((s, i) => ({
+        id: `ai_${Date.now()}_${i}`,
+        target: s.zone,
+        type: 'zone',
+        scheduleMode: 'recurring',
+        action: ACTION_MAP[s.action] || 'dim_30',
+        time: s.eco_start || '22:00',
+        days: s.days || ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
+        active: true,
+        aiGenerated: true,
+      }));
+
+      setSuggestedSchedules(suggestions);
+      setAiSummary(config.summary || '');
+      setShowSuggestionModal(true);
+    } catch (err) {
+      console.error(err);
+      toast.error('Impossible de générer les suggestions IA. Vérifiez la clé API Groq.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleConfirmSuggestions = () => {
+    suggestedSchedules.forEach(s => addSchedule(s));
+    const updated = [...schedules, ...suggestedSchedules];
+    syncSchedulesToGTB(updated);
+    setShowSuggestionModal(false);
+    useStore.getState().addActivity('ai', `${suggestedSchedules.length} cycles IA ajoutés à la planification`);
+    toast.success(`${suggestedSchedules.length} cycles d'optimisation IA appliqués`);
   };
 
   const handleToggleSchedule = (id) => {
@@ -156,7 +204,7 @@ export default function Schedule() {
     setShowAddModal(false);
     
     // Reset form target
-    setTargetName(targetType === 'device' ? 'CTA Bloc Principal' : (zones[0]?.name || ''));
+    setTargetName(targetType === 'device' ? (zones[0]?.devices?.[0]?.name || '') : (zones[0]?.name || ''));
     setEventName('');
     setTargetDate('');
   };
@@ -208,22 +256,37 @@ export default function Schedule() {
           
           <div className="space-y-6">
             {/* Section Header */}
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
               <div>
                 <h2 className="text-xl text-text-primary font-display font-semibold">
                   Planification des Équipements
                 </h2>
-                <p className="text-xs text-text-muted mt-1">
-                  Configurez des cycles récurrents, variations d'éclairage ou fermetures événementielles de la Polyclinique Errachid.
+                <p className="text-xs text-text-muted mt-1 max-w-lg">
+                  Configurez des cycles récurrents, variations d'éclairage ou fermetures événementielles. L'IA peut suggérer des cycles d'optimisation nocturne basés sur vos équipements.
                 </p>
               </div>
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="flex items-center gap-2 bg-accent-cyan text-bg-primary font-semibold px-4 py-2 rounded-xl hover:brightness-110 transition text-sm cursor-pointer shadow-lg shadow-accent-cyan/15 font-display"
-              >
-                <Plus className="w-4 h-4" />
-                Ajouter un Cycle
-              </button>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {/* AI suggest button */}
+                <button
+                  onClick={handleAiSuggest}
+                  disabled={aiLoading}
+                  className="flex items-center gap-2 bg-bg-surface border border-accent-cyan/25 text-accent-cyan font-semibold px-4 py-2 rounded-xl hover:bg-accent-cyan/10 transition text-sm cursor-pointer disabled:opacity-50 font-display"
+                >
+                  {aiLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Brain className="w-4 h-4" />
+                  )}
+                  Suggérer (IA)
+                </button>
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="flex items-center gap-2 bg-accent-cyan text-bg-primary font-semibold px-4 py-2 rounded-xl hover:brightness-110 transition text-sm cursor-pointer shadow-lg shadow-accent-cyan/15 font-display"
+                >
+                  <Plus className="w-4 h-4" />
+                  Ajouter un Cycle
+                </button>
+              </div>
             </div>
 
             {/* Schedules grid list */}
@@ -307,6 +370,73 @@ export default function Schedule() {
             </div>
           </div>
 
+          {/* AI Suggestion Confirmation Modal */}
+          {showSuggestionModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+              <div className="bg-bg-surface border border-white/10 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in scale-in duration-200">
+                {/* Header */}
+                <div className="flex items-center gap-3 px-6 py-4 border-b border-white/6 bg-accent-cyan/5">
+                  <div className="p-2 rounded-lg bg-accent-cyan/15">
+                    <Brain className="w-5 h-5 text-accent-cyan" />
+                  </div>
+                  <div>
+                    <h3 className="font-display font-bold text-text-primary">
+                      Suggestion d'Optimisation IA
+                    </h3>
+                    <p className="text-xs text-text-muted mt-0.5">
+                      {suggestedSchedules.length} cycle{suggestedSchedules.length !== 1 ? 's' : ''} proposé{suggestedSchedules.length !== 1 ? 's' : ''} — confirmez pour les appliquer
+                    </p>
+                  </div>
+                  <button onClick={() => setShowSuggestionModal(false)} className="ml-auto text-text-muted hover:text-text-primary p-1 cursor-pointer">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Summary */}
+                {aiSummary && (
+                  <div className="px-6 py-3 bg-bg-elevated/50 border-b border-white/5">
+                    <p className="text-xs text-text-muted italic leading-relaxed">{aiSummary}</p>
+                  </div>
+                )}
+
+                {/* Suggested schedules list */}
+                <div className="max-h-64 overflow-y-auto px-6 py-4 space-y-2">
+                  {suggestedSchedules.map((s) => (
+                    <div key={s.id} className="flex items-center gap-3 p-3 rounded-xl bg-bg-elevated border border-white/5">
+                      <ChevronRight className="w-3.5 h-3.5 text-accent-cyan flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-text-primary truncate">{s.target}</p>
+                        <p className="text-[11px] text-text-muted">
+                          {getActionLabel(s.action)} · {s.time} · {s.days.slice(0, 3).join(', ')}{s.days.length > 3 ? '…' : ''}
+                        </p>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${getActionColor(s.action)}`}>
+                        {getActionLabel(s.action)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3 px-6 py-4 border-t border-white/6">
+                  <button
+                    onClick={() => setShowSuggestionModal(false)}
+                    className="flex-1 py-2.5 border border-white/10 text-text-primary text-sm font-semibold rounded-xl hover:bg-bg-elevated transition cursor-pointer"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={handleConfirmSuggestions}
+                    className="flex-1 py-2.5 bg-accent-cyan text-bg-primary text-sm font-bold rounded-xl hover:brightness-110 transition cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    Appliquer les cycles
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Add Cycle Modal */}
           {showAddModal && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -365,7 +495,7 @@ export default function Schedule() {
                         type="button"
                         onClick={() => {
                           setTargetType('device');
-                          setTargetName('CTA Bloc Principal');
+                          setTargetName(zones[0]?.devices?.[0]?.name || '');
                         }}
                         className={`py-2 px-3 text-xs font-semibold rounded-xl border text-center transition cursor-pointer ${
                           targetType === 'device'
@@ -403,19 +533,12 @@ export default function Schedule() {
                       className="w-full px-4 py-2.5 bg-bg-elevated border border-white/10 rounded-xl text-text-primary text-sm focus:outline-none focus:border-accent-cyan transition-colors"
                     >
                       {targetType === 'device' ? (
-                        <>
-                          <option value="CTA Bloc Principal">CTA Bloc Principal</option>
-                          <option value="Compteur STEG Principal">Compteur STEG Principal</option>
-                          <option value="Chiller #1">Chiller #1</option>
-                          <option value="Chiller #2">Chiller #2</option>
-                          <option value="Tableau Éclairage RDC">Tableau Éclairage RDC</option>
-                          <option value="Ascenseurs x4">Ascenseurs x4</option>
-                        </>
+                        zones.flatMap(z => z.devices || []).map(d => (
+                          <option key={d.id} value={d.name}>{d.name}</option>
+                        ))
                       ) : (
                         zones.map((z) => (
-                          <option key={z.id} value={z.name}>
-                            {z.name}
-                          </option>
+                          <option key={z.id} value={z.name}>{z.name}</option>
                         ))
                       )}
                     </select>

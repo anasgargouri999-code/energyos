@@ -207,4 +207,47 @@ router.post('/generate-code', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/admin/solar-requests
+ * List all solar installation requests
+ */
+router.get('/solar-requests', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('solar_requests')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json({ requests: data });
+  } catch (err) {
+    logger.error('Failed to fetch solar requests', { error: err.message });
+    res.status(500).json({ error: 'Erreur lors de la récupération des demandes solaires' });
+  }
+});
+
+/**
+ * PATCH /api/admin/solar-requests/:id/status
+ * Update status of a solar request
+ * Body: { status }
+ */
+router.patch('/solar-requests/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const validStatuses = ['pending', 'contacted', 'quoted', 'installed', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Statut invalide' });
+    }
+    const { error } = await supabase
+      .from('solar_requests')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) {
+    logger.error('Failed to update solar request status', { error: err.message });
+    res.status(500).json({ error: 'Erreur lors de la mise à jour du statut' });
+  }
+});
+
 module.exports = router;

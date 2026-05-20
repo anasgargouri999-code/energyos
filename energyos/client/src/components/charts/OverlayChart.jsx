@@ -13,7 +13,7 @@ export default function OverlayChart({ data }) {
       const baseline = payload.find(p => p.dataKey === 'baseline')?.value || 0;
       const optimized = payload.find(p => p.dataKey === 'optimized')?.value || 0;
       const savings = baseline - optimized;
-      
+
       return (
         <div className="bg-bg-surface border border-white/10 p-4 rounded-xl shadow-xl">
           <p className="font-medium text-text-primary mb-2">{label}</p>
@@ -38,47 +38,47 @@ export default function OverlayChart({ data }) {
 
   return (
     <div className="w-full h-[300px]">
-      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+      <ResponsiveContainer width="100%" height="100%" debounce={100}>
         <LineChart data={data} margin={{ top: 10, right: 10, left: -5, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-          <XAxis 
-            dataKey="name" 
-            stroke="#64748B" 
-            fontSize={12} 
-            tickLine={false} 
+          <XAxis
+            dataKey="name"
+            stroke="#64748B"
+            fontSize={12}
+            tickLine={false}
             axisLine={false}
             dy={10}
           />
-          <YAxis 
-            stroke="#64748B" 
-            fontSize={12} 
-            tickLine={false} 
+          <YAxis
+            stroke="#64748B"
+            fontSize={12}
+            tickLine={false}
             axisLine={false}
             tickFormatter={formatYAxis}
             dx={-10}
           />
           <Tooltip content={<CustomTooltip />} />
-          <Legend 
-            verticalAlign="top" 
-            height={36} 
+          <Legend
+            verticalAlign="top"
+            height={36}
             iconType="circle"
             wrapperStyle={{ fontSize: '12px', color: '#F1F5F9' }}
           />
-          <Line 
+          <Line
             name="Avant GTB"
-            type="monotone" 
-            dataKey="baseline" 
-            stroke="#64748B" 
+            type="monotone"
+            dataKey="baseline"
+            stroke="#64748B"
             strokeWidth={2}
-            strokeDasharray="5 5" 
+            strokeDasharray="5 5"
             dot={false}
             activeDot={{ r: 4, strokeWidth: 0 }}
           />
-          <Line 
+          <Line
             name="Avec EnergyOS"
-            type="monotone" 
-            dataKey="optimized" 
-            stroke="#22C55E" 
+            type="monotone"
+            dataKey="optimized"
+            stroke="#22C55E"
             strokeWidth={3}
             dot={{ r: 3, strokeWidth: 0, fill: '#22C55E' }}
             activeDot={{ r: 6, strokeWidth: 0 }}
