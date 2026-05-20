@@ -3,6 +3,7 @@ import Card from '../ui/Card';
 import Badge from '../ui/Badge';
 import { useStore } from '../../store';
 import { Thermometer, Droplets, Zap, Cpu, ChevronDown, ChevronUp, Sliders, Sun, Loader2 } from 'lucide-react';
+import { getApiBaseUrl } from '../../lib/api';
 
 export default function ZoneCard({ zone, onModeChange }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -51,7 +52,7 @@ export default function ZoneCard({ zone, onModeChange }) {
     }
 
     try {
-      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const apiBase = getApiBaseUrl();
       await fetch(`${apiBase}/api/gtb/control`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

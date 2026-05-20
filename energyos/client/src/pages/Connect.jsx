@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
+import { getApiBaseUrl } from '../lib/api';
 import { Zap, CheckCircle2, AlertTriangle, XCircle, Loader2, ArrowRight, Wifi, WifiOff, SkipForward } from 'lucide-react';
 import { DEMO_DEVICES, MONTHLY_DATA } from '../lib/demoData';
 
@@ -28,7 +29,7 @@ export default function Connect() {
     setStatus('loading');
 
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+      const baseUrl = getApiBaseUrl();
       const response = await fetch(`${baseUrl}/api/gtb/ping?url=${encodeURIComponent(cleanUrl)}`);
 
       if (response.status === 200 || response.status === 201) {

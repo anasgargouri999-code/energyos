@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Navbar from '../components/layout/Navbar';
 import Sidebar from '../components/layout/Sidebar';
 import { useStore } from '../store';
+import { getApiBaseUrl } from '../lib/api';
 import { Clock, Plus, Trash2, X, Sliders, Brain, Sparkles, Loader2, CheckCircle2, ChevronRight } from 'lucide-react';
 import { autoConfigFromDevices } from '../lib/groq';
 import { MONTHLY_DATA } from '../lib/demoData';
@@ -39,7 +40,7 @@ export default function Schedule() {
   useEffect(() => {
     const gtbUrl = localStorage.getItem('energyos_gtb_url');
     if (gtbUrl && zones.length === 0) {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const baseUrl = getApiBaseUrl();
       fetch(`${baseUrl}/api/gtb/zones?url=${encodeURIComponent(gtbUrl)}`)
         .then(res => res.ok && res.json())
         .then(data => {
@@ -80,7 +81,7 @@ export default function Schedule() {
   const syncSchedulesToGTB = async (currentSchedules) => {
     const gtbUrl = localStorage.getItem('energyos_gtb_url') || '';
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const baseUrl = getApiBaseUrl();
       const zonesGrouped = {};
       
       currentSchedules.forEach((sch) => {

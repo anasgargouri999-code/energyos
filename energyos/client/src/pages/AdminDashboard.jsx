@@ -7,9 +7,9 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Badge from '../components/ui/Badge';
-import Skeleton from '../components/ui/Skeleton';
+import { getApiBaseUrl } from '../lib/api';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+const API_BASE = getApiBaseUrl();
 
 /* ── helpers ── */
 function adminHeaders() {

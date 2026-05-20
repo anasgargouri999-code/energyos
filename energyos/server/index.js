@@ -36,7 +36,24 @@ app.use((err, req, res, next) => {
   res.status(status).json({ error: message });
 });
 
+// Process-wide error handling
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught Exception:', { error: err.message, stack: err.stack });
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection:', {
+    reason: reason instanceof Error ? reason.message : String(reason),
+    stack: reason instanceof Error ? reason.stack : null
+  });
+});
+
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   logger.info(`EnergyOS server running on port ${PORT}`);
 });
+
+server.on('error', (err) => {
+  logger.error('Server failed to start or encountered an error:', { error: err.message, stack: err.stack });
+});
+

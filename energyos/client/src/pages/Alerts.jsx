@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Navbar from '../components/layout/Navbar';
 import Sidebar from '../components/layout/Sidebar';
 import { useStore } from '../store';
+import { getApiBaseUrl } from '../lib/api';
 import { DEMO_ALERTS } from '../lib/demoData';
 import {
   AlertCircle, AlertTriangle, Info, CheckCircle2, Check,
@@ -197,7 +198,7 @@ export default function Alerts() {
     const gtbUrl = localStorage.getItem('energyos_gtb_url');
     if (!gtbUrl) return;
 
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+    const baseUrl = getApiBaseUrl();
 
     const poll = async () => {
       try {
@@ -231,7 +232,7 @@ export default function Alerts() {
     try {
       const gtbUrl = localStorage.getItem('energyos_gtb_url');
       if (gtbUrl) {
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+        const baseUrl = getApiBaseUrl();
         await fetch(`${baseUrl}/api/gtb/alerts/${id}/acknowledge`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

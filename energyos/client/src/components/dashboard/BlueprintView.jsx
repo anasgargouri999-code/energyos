@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../../store';
 import { Thermometer, Zap, Sun, ShieldCheck } from 'lucide-react';
+import { getApiBaseUrl } from '../../lib/api';
 
 // Floor definitions — CSS grid cols are 1-based, span within a 12-col grid
 const FLOORS = [
@@ -106,7 +107,7 @@ function RoomCell({ zoneId, colStart, colSpan }) {
     const gtbUrl = localStorage.getItem('energyos_gtb_url');
     if (!gtbUrl) return;
     try {
-      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const apiBase = getApiBaseUrl();
       await fetch(`${apiBase}/api/gtb/control`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -8,6 +8,7 @@ import SimulationControls from '../components/dashboard/SimulationControls';
 import ChatAssistant from '../components/dashboard/ChatAssistant';
 import BlueprintView from '../components/dashboard/BlueprintView';
 import { useStore } from '../store';
+import { getApiBaseUrl } from '../lib/api';
 import { DEMO_ZONES, DEMO_LIVE, DEMO_ALERTS } from '../lib/demoData';
 import { generateClinicalReport } from '../lib/groq';
 import { isDbConfigured, fetchZonesWithDevices } from '../lib/db';
@@ -100,7 +101,7 @@ export default function Dashboard() {
     if (!gtbUrl) return;
 
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const baseUrl = getApiBaseUrl();
 
       const zonesGrouped = {};
       currentSchedules.forEach((sch) => {
@@ -208,7 +209,7 @@ export default function Dashboard() {
       const gtbUrl = localStorage.getItem('energyos_gtb_url');
       if (gtbUrl) {
         try {
-          const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+          const baseUrl = getApiBaseUrl();
           let gotRealZones = false;
 
           // Fetch zones
@@ -309,7 +310,7 @@ export default function Dashboard() {
         // If a real local GTB is connected, we should poll the real simulation instead of simulating in-memory!
         const gtbUrl = localStorage.getItem('energyos_gtb_url');
         if (gtbUrl) {
-          const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+          const baseUrl = getApiBaseUrl();
 
           // Poll zones
           fetch(`${baseUrl}/api/gtb/zones?url=${encodeURIComponent(gtbUrl)}`)
@@ -411,7 +412,7 @@ export default function Dashboard() {
 
     try {
       const gtbUrl = localStorage.getItem('energyos_gtb_url') || '';
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const baseUrl = getApiBaseUrl();
 
       const res = await fetch(`${baseUrl}/api/gtb/control`, {
         method: 'POST',
