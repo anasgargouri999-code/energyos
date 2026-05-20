@@ -13,18 +13,21 @@ export default function Connect() {
   const navigate = useNavigate();
 
   const handleTestConnection = async () => {
-    if (!url.trim()) return;
+    let cleanUrl = url.trim().replace(/\/+$/, '').replace(/\/ui$/, '');
+    if (!cleanUrl) return;
+    
+    setUrl(cleanUrl);
     setStatus('loading');
 
     try {
       const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-      const response = await fetch(`${baseUrl}/api/gtb/ping?url=${encodeURIComponent(url)}`);
+      const response = await fetch(`${baseUrl}/api/gtb/ping?url=${encodeURIComponent(cleanUrl)}`);
 
       if (response.status === 200 || response.status === 201) {
         setStatus('success');
         setDevices(DEMO_DEVICES);
-        setGtbEndpoint(url);
-        localStorage.setItem('energyos_gtb_url', url);
+        setGtbEndpoint(cleanUrl);
+        localStorage.setItem('energyos_gtb_url', cleanUrl);
       } else if (response.status === 404) {
         setStatus('error404');
       } else {
