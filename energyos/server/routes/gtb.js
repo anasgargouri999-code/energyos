@@ -19,7 +19,7 @@ function cleanGtbUrl(rawUrl) {
 // Middleware to clean/sanitize the GTB URL parameter
 router.use((req, res, next) => {
   if (req.query.url) req.query.url = cleanGtbUrl(req.query.url);
-  if (req.body.url) req.body.url = cleanGtbUrl(req.body.url);
+  if (req.body && req.body.url) req.body.url = cleanGtbUrl(req.body.url);
   next();
 });
 

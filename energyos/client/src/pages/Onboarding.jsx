@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
+import { getApiBaseUrl } from '../lib/api';
 import { Leaf, BarChart3, ShieldCheck, ArrowRight, Zap } from 'lucide-react';
 
 const SLIDES = [
@@ -68,7 +69,7 @@ export default function Onboarding() {
     }
 
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+      const baseUrl = getApiBaseUrl();
       const res = await fetch(`${baseUrl}/api/auth/validate-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

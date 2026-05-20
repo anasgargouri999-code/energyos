@@ -205,8 +205,8 @@ export default function Dashboard() {
     let active = true;
 
     async function loadData() {
-      // 1. Check for real GTB connection first
-      const gtbUrl = localStorage.getItem('energyos_gtb_url');
+      // 1. Check for real GTB connection first (skip in demo mode)
+      const gtbUrl = mode !== 'demo' && localStorage.getItem('energyos_gtb_url');
       if (gtbUrl) {
         try {
           const baseUrl = getApiBaseUrl();
@@ -307,9 +307,9 @@ export default function Dashboard() {
   useEffect(() => {
     if (zones.length > 0) {
       const interval = setInterval(() => {
-        // If a real local GTB is connected, we should poll the real simulation instead of simulating in-memory!
+        // If a real local GTB is connected and NOT in demo mode, poll GTB
         const gtbUrl = localStorage.getItem('energyos_gtb_url');
-        if (gtbUrl) {
+        if (gtbUrl && mode !== 'demo') {
           const baseUrl = getApiBaseUrl();
 
           // Poll zones

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../../store';
+import { getApiBaseUrl } from '../../lib/api';
 import {
   Sliders, Flame, RefreshCw, AlertTriangle, X,
   ZapOff, Activity, Loader2, Settings2
@@ -8,7 +9,7 @@ import toast from 'react-hot-toast';
 import { DEMO_ZONES } from '../../lib/demoData';
 
 const gtbPost = async (path, body) => {
-  const res = await fetch(`/api/gtb${path}`, {
+  const res = await fetch(`${getApiBaseUrl()}/api/gtb${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
